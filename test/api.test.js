@@ -148,8 +148,8 @@ test('coalition race: only cross-coalition wins score, with a weekly cap per pai
   await call(carol, 'POST', `/api/matches/${m.body.id}/confirm`, {});
   const st = (await call(alice, 'GET', '/api/state')).body;
   const vela = st.coalitions.find((c) => c.name === 'Vela'), cetus = st.coalitions.find((c) => c.name === 'Cetus');
-  assert.equal(vela.points, 9, '4 wins vs the same player in a week, only 3 count, 3 points each');
+  assert.equal(vela.points, 3 + 3 + 3 + 1, '4th win vs the same player in a week scores 1');
   assert.equal(vela.wins, 4); assert.equal(cetus.losses, 4); assert.equal(cetus.points, 0, 'losing costs nothing');
   assert.deepEqual(vela.vs.Cetus, { w: 4, l: 0 });
-  assert.equal(vela.contributors[1], 9);
+  assert.equal(vela.contributors[1], 10);
 });

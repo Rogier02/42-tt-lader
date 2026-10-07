@@ -6,8 +6,22 @@ const POINTS = { win: 3, loss: 1, upsetBonus: 2, upsetMargin: 50, champion: 10, 
 
 // Coalition race: only matches between players of different coalitions count.
 // A win scores for the winner's coalition, a loss costs nothing (the other coalition gains instead).
-// At most `pairWeeklyCap` matches per pair of players per week count, so two friends can't farm points.
-const COALITION_POINTS = { win: 3, upsetBonus: 2, pairWeeklyCap: 3, champion: 10, runnerUp: 6, semifinal: 3 };
+// Beating a higher-rated player scores more. The first `fullPerPairPerWeek` matches between the same two
+// players each week score in full; after that each win still scores `afterCap`, so variety pays more.
+const COALITION_POINTS = {
+  win: 3,
+  upset: 5, upsetMargin: 50,          // opponent rated 50+ higher
+  bigUpset: 9, bigUpsetMargin: 100,   // opponent rated 100+ higher
+  fullPerPairPerWeek: 3, afterCap: 1,
+  champion: 10, runnerUp: 6, semifinal: 3,
+};
+function coalitionWinPoints(ratingGap, nthThisWeek) {
+  const C = COALITION_POINTS;
+  if (nthThisWeek > C.fullPerPairPerWeek) return C.afterCap;
+  if (ratingGap >= C.bigUpsetMargin) return C.bigUpset;
+  if (ratingGap >= C.upsetMargin) return C.upset;
+  return C.win;
+}
 const WEEK = 7 * 864e5;
 
 function compute(db, seasonStart, coalitionNames = []) {
@@ -33,6 +47,7 @@ function compute(db, seasonStart, coalitionNames = []) {
     const A = players.get(m.reporter_id), B = players.get(m.opponent_id);
     const aWon = m.winner_id === A.id;
     const W = aWon ? A : B, L = aWon ? B : A;
+    const gap = L.r - W.r; // how much higher the loser was rated before the match
     const upset = W.r < L.r - POINTS.upsetMargin;
     const na = rules.glicko(A, B, aWon ? 1 : 0), nb = rules.glicko(B, A, aWon ? 0 : 1);
     const inSeason = m.confirmed_at >= seasonStart;
@@ -48,7 +63,8 @@ function compute(db, seasonStart, coalitionNames = []) {
       coal(cw).wins++; coal(cl).losses++;
       coal(cw).vs[cl] = coal(cw).vs[cl] || { w: 0, l: 0 }; coal(cw).vs[cl].w++;
       coal(cl).vs[cw] = coal(cl).vs[cw] || { w: 0, l: 0 }; coal(cl).vs[cw].l++;
-      if (n <= COALITION_POINTS.pairWeeklyCap) { coalPts = COALITION_POINTS.win + (upset ? COALITION_POINTS.upsetBonus : 0); scoreCoalition(W.id, coalPts); }
+      coalPts = coalitionWinPoints(gap, n);
+      scoreCoalition(W.id, coalPts);
     }
     meta.set(m.id, { delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset, coalPts, coalition: coalPts ? cw : null });
     Object.assign(A, na); Object.assign(B, nb);
@@ -75,4 +91,4 @@ function compute(db, seasonStart, coalitionNames = []) {
   return { players, meta, awards, coalitions: [...coalitions.values()].sort((a, b) => b.points - a.points) };
 }
 
-module.exports = { compute, POINTS, COALITION_POINTS };
+module.exports = { compute, POINTS, COALITION_POINTS, coalitionWinPoints };

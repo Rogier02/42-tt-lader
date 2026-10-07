@@ -73,9 +73,9 @@ You can also set these optional values:
   - Brackets are single elimination, seeded by rating, and top seeds get byes. The two players, the organiser or an admin can enter a result, and tournament results count right away.
 - **Coalitions:** Vela (red), Cetus (blue) and Pyxis (purple). With 42 sign-in, each player's coalition comes from the 42 API. Anyone without one gets a random coalition, balanced across the three.
 - **Coalition race:** coalitions compete for points over the season. Only matches between players of different coalitions count.
-  - A win earns your coalition 3 points, or 5 for an upset.
+  - A win earns your coalition 3 points. Beating someone rated 50+ higher earns 5, and a true upset against someone rated 100+ higher earns 9.
   - A loss costs nothing, but the other coalition scores.
-  - At most 3 matches per pair of players per week count.
+  - Your first 3 matches against the same player each week score in full. After that, each win still earns 1 point, so variety pays more but playing the same person still counts.
   - Tournament placements count too: 10 for the champion, 6 for the runner-up, 3 for each semifinalist.
   - The numbers are in `COALITION_POINTS` in `server/standings.js`.
   - Coalition team matches (2v2, 3v3) are a planned next step.

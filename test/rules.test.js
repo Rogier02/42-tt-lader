@@ -35,3 +35,13 @@ test('bracket: 7 players, top seed gets the bye, seeds 1 and 2 on opposite halve
   const top = rounds[0].slice(0, 2).flatMap((m) => [m.a, m.b]);
   assert.ok(top.includes(1) && !top.includes(2));
 });
+
+test('coalition points: upset tiers and diminishing returns per pair', () => {
+  const { coalitionWinPoints: pts } = require('../server/standings');
+  assert.equal(pts(0, 1), 3);
+  assert.equal(pts(-200, 1), 3, 'beating a weaker player is a normal win');
+  assert.equal(pts(50, 1), 5);
+  assert.equal(pts(99, 3), 5);
+  assert.equal(pts(100, 1), 9);
+  assert.equal(pts(300, 4), 1, 'after 3 matches vs the same player in a week, any win scores 1');
+});

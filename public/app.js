@@ -226,10 +226,11 @@ function viewCoalitions(main,me,seg){
     <p class="note">Wins–losses of each row's players against the column's players.</p></section>
   <section class="panel"><h3>How coalition points work</h3>
     <ul class="rules">
-      <li>A win against a player from another coalition earns your coalition <b>${R.win}</b> points, or <b>${R.win+R.upsetBonus}</b> for an upset against someone rated 50 or more higher.</li>
+      <li>A win against a player from another coalition earns your coalition <b>${R.win}</b> points.</li>
+      <li>Beat someone rated ${R.upsetMargin} or more higher and it's <b>${R.upset}</b> points. A true upset, against someone rated ${R.bigUpsetMargin} or more higher, earns <b>${R.bigUpset}</b>.</li>
       <li>Losing costs your coalition nothing, but the other coalition scores.</li>
       <li>Matches within your own coalition don't count.</li>
-      <li>Only the first ${R.pairWeeklyCap} matches between the same two players each week count.</li>
+      <li>Your first ${R.fullPerPairPerWeek} matches against the same player each week score in full. After that, each win still earns <b>${R.afterCap}</b> point, so playing different people pays more.</li>
       <li>Tournaments: the champion's coalition gets <b>${R.champion}</b>, the runner-up's <b>${R.runnerUp}</b>, each semifinalist's <b>${R.semifinal}</b>.</li>
       <li>Points reset each season.</li>
     </ul></section>`;

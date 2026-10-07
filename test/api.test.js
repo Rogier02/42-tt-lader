@@ -134,3 +134,22 @@ test('upgrades a version 1 database without losing tournaments', async () => {
   assert.equal(t.round_best_of, '[3,3]');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM tournament_players').get().n, 3);
 });
+
+test('coalition race: only cross-coalition wins score, with a weekly cap per pair', async () => {
+  const { db, login, call } = await setup();
+  db.prepare(`UPDATE users SET coalition = CASE id WHEN 1 THEN 'Vela' WHEN 2 THEN 'Cetus' WHEN 3 THEN 'Vela' ELSE 'Pyxis' END`).run();
+  const alice = await login(1), bob = await login(2), carol = await login(3);
+  const win = [[11, 1], [11, 2]];
+  for (let i = 0; i < 4; i++) {
+    const m = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 3, sets: win });
+    await call(bob, 'POST', `/api/matches/${m.body.id}/confirm`, {});
+  }
+  const m = await call(alice, 'POST', '/api/matches', { opponentId: 3, bestOf: 3, sets: win });
+  await call(carol, 'POST', `/api/matches/${m.body.id}/confirm`, {});
+  const st = (await call(alice, 'GET', '/api/state')).body;
+  const vela = st.coalitions.find((c) => c.name === 'Vela'), cetus = st.coalitions.find((c) => c.name === 'Cetus');
+  assert.equal(vela.points, 9, '4 wins vs the same player in a week, only 3 count, 3 points each');
+  assert.equal(vela.wins, 4); assert.equal(cetus.losses, 4); assert.equal(cetus.points, 0, 'losing costs nothing');
+  assert.deepEqual(vela.vs.Cetus, { w: 4, l: 0 });
+  assert.equal(vela.contributors[1], 9);
+});

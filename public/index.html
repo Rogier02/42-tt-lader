@@ -253,6 +253,31 @@ details>summary{cursor:pointer;font-weight:600;color:var(--table-ink)}
 .mrow .pts{font-size:.8rem;color:var(--muted)}
 .chart polyline{stroke:var(--table-ink)}
 .chart polygon{fill:var(--table-ink)}
+/* ---- v3: profile tabs, create buttons, coalition race ---- */
+.btn-new{background:var(--ball);border-color:var(--ball);color:#1b0f05}
+.btn-new:hover{filter:brightness(1.06)}
+.btn-new:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-inline:-20px;padding-inline:20px}
+.ptabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:10px 12px;cursor:pointer;color:var(--muted);font-family:var(--f-display);font-weight:600;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:8px}
+.ptabs button:hover{color:var(--ink)}
+.ptabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ball)}
+.ptabs .count{font-family:var(--f-num);font-size:.75rem;letter-spacing:0;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:0 7px;color:var(--muted)}
+#ptab-body{display:flex;flex-direction:column;gap:16px}
+@media (max-width:520px){.ptabs{margin-inline:-16px;padding-inline:16px}}
+.race{display:flex;flex-direction:column;gap:18px}
+.race-row{display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:start}
+.race-row .rank{width:auto;padding-top:2px}
+.race-main{display:flex;flex-direction:column;gap:6px;min-width:0}
+.race-name{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.race-name b{font-family:var(--f-display);font-size:1.4rem;text-transform:uppercase;letter-spacing:.04em}
+.race-pts{margin-left:auto;font-size:1.15rem}
+.race-bar{height:14px;border-radius:7px;background:var(--sunk);border:1px solid var(--line);overflow:hidden}
+.race-bar i{display:block;height:100%;background:var(--c);border-radius:7px 0 0 7px}
+.race-row .sub{font-size:.85rem;color:var(--muted)}
+.race-row.mine .race-name b{color:var(--c)}
+table.h2h{min-width:420px}
+td.muted{color:var(--muted)}
+.rules{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:68ch}
 </style>
 </head>
 <body>

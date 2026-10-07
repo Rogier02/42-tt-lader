@@ -1,7 +1,8 @@
 const path = require('node:path');
 const crypto = require('node:crypto');
 const Fastify = require('fastify');
-const { compute } = require('./standings');
+const { compute, COALITION_POINTS } = require('./standings');
+const { assignMissing } = require('./coalitions');
 
 const SESSION_DAYS = 30;
 const FT = 'https://api.intra.42.fr';
@@ -27,7 +28,7 @@ function buildApp(config, db) {
   }
   function standings() {
     autoConfirm();
-    if (!cache) cache = compute(db, config.seasonStart);
+    if (!cache) cache = compute(db, config.seasonStart, config.coalitions);
     return cache;
   }
   const timer = setInterval(autoConfirm, 5 * 60e3);
@@ -110,6 +111,7 @@ function buildApp(config, db) {
         userId = Number(db.prepare('INSERT INTO users (intra_id, login, name, image_url, coalition, coalition_color, is_admin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
           .run(me.id, me.login, name, image, coalition, color, isAdmin, now()).lastInsertRowid);
       }
+      if (!coalition) assignMissing(db, config.coalitions);
       invalidate();
       startSession(reply, userId);
       return reply.redirect('/');
@@ -149,7 +151,7 @@ function buildApp(config, db) {
     const matches = rows.map((m) => {
       const x = st.meta.get(m.id) || {};
       return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets: JSON.parse(m.sets), w: m.winner_id, status: m.status,
-        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, delta: x.delta, pts: x.pts, upset: !!x.upset };
+        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null };
     });
     const setsById = new Map(rows.map((m) => [m.id, JSON.parse(m.sets)]));
 
@@ -174,11 +176,11 @@ function buildApp(config, db) {
     const challenges = db.prepare(`SELECT * FROM challenges WHERE status IN ('open','accepted') AND (from_id = ? OR to_id = ?) ORDER BY created_at DESC`)
       .all(me.id, me.id).map((c) => ({ id: c.id, from: c.from_id, to: c.to_id, bo: c.best_of, message: c.message, status: c.status, created: c.created_at }));
 
-    const coal = new Map(db.prepare('SELECT id, coalition, coalition_color FROM users').all().map((u) => [u.id, u]));
-    const players = [...st.players.values()].map((p) => ({ ...p, coalition: coal.get(p.id)?.coalition || null, coalitionColor: coal.get(p.id)?.coalition_color || null }));
+    const coal = new Map(db.prepare('SELECT id, coalition FROM users').all().map((u) => [u.id, u.coalition]));
+    const players = [...st.players.values()].map((p) => ({ ...p, coalition: coal.get(p.id) || null }));
 
     return { me: me.id, isAdmin, authMode: config.authMode, season: config.seasonName, seasonStart: config.seasonStart,
-      autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: config.coalitions,
+      autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS,
       players, matches, tournaments, challenges };
   });
 

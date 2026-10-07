@@ -71,7 +71,14 @@ You can also set these optional values:
   - A tournament stays hidden until an admin approves it. Admins' own tournaments are published right away.
   - The format is set per stage (early rounds, quarterfinals, semifinals, final) as best of 3, 5 or 7. Three templates cover the usual cases: Quick, Standard and Championship. Once the bracket starts, the organiser can still change a round's format until it has results.
   - Brackets are single elimination, seeded by rating, and top seeds get byes. The two players, the organiser or an admin can enter a result, and tournament results count right away.
-- **Coalitions:** Vela, Pyxis and Cetus appear on profiles and the ladder, with season points per coalition. Coalition team matches (2v2, 3v3) are a planned next step.
+- **Coalitions:** Vela (red), Cetus (blue) and Pyxis (purple). With 42 sign-in, each player's coalition comes from the 42 API. Anyone without one gets a random coalition, balanced across the three.
+- **Coalition race:** coalitions compete for points over the season. Only matches between players of different coalitions count.
+  - A win earns your coalition 3 points, or 5 for an upset.
+  - A loss costs nothing, but the other coalition scores.
+  - At most 3 matches per pair of players per week count.
+  - Tournament placements count too: 10 for the champion, 6 for the runner-up, 3 for each semifinalist.
+  - The numbers are in `COALITION_POINTS` in `server/standings.js`.
+  - Coalition team matches (2v2, 3v3) are a planned next step.
 
 ## Deploying
 

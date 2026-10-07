@@ -21,7 +21,7 @@ function loadConfig(env = process.env) {
     autoConfirmHours: Number(env.AUTO_CONFIRM_HOURS || 24),
     // New tournaments wait for an admin's approval unless this is set to false.
     requireApproval: (env.REQUIRE_TOURNAMENT_APPROVAL || 'true').toLowerCase() !== 'false',
-    coalitions: list(env.COALITIONS || 'Vela,Pyxis,Cetus'),
+    coalitions: list(env.COALITIONS || 'Vela,Cetus,Pyxis'),
   };
   if (!cfg.cookieSecret) {
     if (authMode === '42') throw new Error('COOKIE_SECRET must be set when 42 sign-in is enabled.');

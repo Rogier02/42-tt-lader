@@ -4,8 +4,24 @@ const rules = require('./rules');
 
 const POINTS = { win: 3, loss: 1, upsetBonus: 2, upsetMargin: 50, champion: 10, runnerUp: 6, semifinal: 3 };
 
-function compute(db, seasonStart) {
+// Coalition race: only matches between players of different coalitions count.
+// A win scores for the winner's coalition, a loss costs nothing (the other coalition gains instead).
+// At most `pairWeeklyCap` matches per pair of players per week count, so two friends can't farm points.
+const COALITION_POINTS = { win: 3, upsetBonus: 2, pairWeeklyCap: 3, champion: 10, runnerUp: 6, semifinal: 3 };
+const WEEK = 7 * 864e5;
+
+function compute(db, seasonStart, coalitionNames = []) {
   const players = new Map();
+  const coalitionOf = new Map(db.prepare('SELECT id, coalition FROM users').all().map((u) => [u.id, u.coalition]));
+  const coalitions = new Map();
+  const coal = (name) => {
+    if (!coalitions.has(name)) coalitions.set(name, { name, points: 0, wins: 0, losses: 0, members: 0, contributors: {}, vs: {} });
+    return coalitions.get(name);
+  };
+  coalitionNames.forEach(coal);
+  for (const c of coalitionOf.values()) if (c) coal(c).members++;
+  const pairWeek = new Map();
+  const scoreCoalition = (userId, n) => { const c = coalitionOf.get(userId); if (!c || !n) return; coal(c).points += n; coal(c).contributors[userId] = (coal(c).contributors[userId] || 0) + n; };
   for (const u of db.prepare('SELECT id, login, name, image_url FROM users ORDER BY id').all()) {
     players.set(u.id, { id: u.id, login: u.login, name: u.name, image: u.image_url, ...rules.START, w: 0, l: 0, pts: 0, hist: [] });
   }
@@ -22,7 +38,19 @@ function compute(db, seasonStart) {
     const inSeason = m.confirmed_at >= seasonStart;
     const wPts = inSeason ? POINTS.win + (upset ? POINTS.upsetBonus : 0) : 0;
     const lPts = inSeason ? POINTS.loss : 0;
-    meta.set(m.id, { delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset });
+    // Coalition race
+    let coalPts = 0;
+    const cw = coalitionOf.get(W.id), cl = coalitionOf.get(L.id);
+    if (inSeason && cw && cl && cw !== cl) {
+      const key = `${Math.min(A.id, B.id)}-${Math.max(A.id, B.id)}-${Math.floor(m.confirmed_at / WEEK)}`;
+      const n = (pairWeek.get(key) || 0) + 1;
+      pairWeek.set(key, n);
+      coal(cw).wins++; coal(cl).losses++;
+      coal(cw).vs[cl] = coal(cw).vs[cl] || { w: 0, l: 0 }; coal(cw).vs[cl].w++;
+      coal(cl).vs[cw] = coal(cl).vs[cw] || { w: 0, l: 0 }; coal(cl).vs[cw].l++;
+      if (n <= COALITION_POINTS.pairWeeklyCap) { coalPts = COALITION_POINTS.win + (upset ? COALITION_POINTS.upsetBonus : 0); scoreCoalition(W.id, coalPts); }
+    }
+    meta.set(m.id, { delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset, coalPts, coalition: coalPts ? cw : null });
     Object.assign(A, na); Object.assign(B, nb);
     W.w++; L.l++; W.pts += wPts; L.pts += lPts;
     A.hist.push({ t: m.confirmed_at, r: A.r }); B.hist.push({ t: m.confirmed_at, r: B.r });
@@ -31,7 +59,12 @@ function compute(db, seasonStart) {
   const awards = new Map(); // tournamentId -> [{id, n, why}]
   for (const t of db.prepare('SELECT id, bracket, finished_at FROM tournaments WHERE finished_at IS NOT NULL').all()) {
     const rounds = JSON.parse(t.bracket), list = [];
-    const give = (id, n, why) => { if (id == null) return; list.push({ id, n, why }); if (t.finished_at >= seasonStart) players.get(id).pts += n; };
+    const coalN = { Champion: COALITION_POINTS.champion, 'Runner-up': COALITION_POINTS.runnerUp, Semifinalist: COALITION_POINTS.semifinal };
+    const give = (id, n, why) => {
+      if (id == null) return;
+      list.push({ id, n, why });
+      if (t.finished_at >= seasonStart) { players.get(id).pts += n; scoreCoalition(id, coalN[why]); }
+    };
     const final = rounds[rounds.length - 1][0];
     give(final.w, POINTS.champion, 'Champion');
     give(final.a === final.w ? final.b : final.a, POINTS.runnerUp, 'Runner-up');
@@ -39,7 +72,7 @@ function compute(db, seasonStart) {
     awards.set(t.id, list);
   }
 
-  return { players, meta, awards };
+  return { players, meta, awards, coalitions: [...coalitions.values()].sort((a, b) => b.points - a.points) };
 }
 
-module.exports = { compute, POINTS };
+module.exports = { compute, POINTS, COALITION_POINTS };

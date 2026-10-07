@@ -2,8 +2,8 @@
 (()=>{
 const SC=173.7178, TAU=0.5, DAY=864e5;
 let S=null, CFG={authMode:'dev',season:''};
-const ui={view:'home',pid:null,sort:'rating',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
-const COAL_COLORS={Vela:'#3f6fd8',Pyxis:'#c4862f',Cetus:'#1d9a8a'};
+const ui={view:'home',ptab:'profile',lview:'players',pid:null,sort:'rating',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
+const COAL_COLORS={Vela:'#d23f36',Cetus:'#2e6fd6',Pyxis:'#8a4fd3'};
 const TEMPLATES=[
   {id:'quick',name:'Quick',desc:'Best of 3 every round',stages:{early:3,qf:3,sf:3,final:3}},
   {id:'standard',name:'Standard',desc:'Best of 5 from the semis',stages:{early:3,qf:3,sf:5,final:5}},
@@ -59,7 +59,8 @@ const fmtDate=t=>new Date(t).toLocaleDateString('en-GB',{weekday:'short',day:'nu
 const fmtTime=t=>new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 function ago(t){const d=(Date.now()-t)/DAY;if(d<1/24)return'just now';if(d<1)return Math.round(d*24)+'h ago';if(d<2)return'yesterday';if(d<14)return Math.round(d)+' days ago';return fmtDate(t)}
 function toast(msg){const r=document.getElementById('toast-root');r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>r.innerHTML='',3500)}
-const coalColor=p=>p.coalitionColor||COAL_COLORS[p.coalition]||'var(--muted)';
+const colorOf=name=>COAL_COLORS[name]||'var(--muted)';
+const coalColor=p=>colorOf(p.coalition);
 const coalDot=p=>`<span class="coal-dot" style="--c:${esc(coalColor(p))}" title="${esc(p.coalition)}"></span>`;
 const coalChip=p=>p.coalition?`<span class="coal" style="--c:${esc(coalColor(p))}"><i></i>${esc(p.coalition)}</span>`:'';
 const nameBtn=p=>`<button class="pname" data-act="player" data-pid="${p.id}"><b>${p.coalition?coalDot(p):''}${esc(p.name)}</b><span>${esc(p.login)}</span></button>`;
@@ -86,14 +87,14 @@ function render(){
     <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p>
       <div class="top-actions"><button class="new-match" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>New match</button>
       <div class="who"><b>${esc(me.login)}</b>${S.isAdmin?' <span class="chip" style="color:inherit;border-color:currentColor">admin</span>':''}<button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div></div>
-    <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('matches','Matches')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
+    <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
   </div></header>
   ${S.authMode==='dev'?'<div class="demo-note">Development mode: sign-in is simulated. Add 42 credentials to the server config to switch to real 42 sign-in.</div>':''}
   <main id="main"></main>`;
   const main=document.getElementById('main');
   if(ui.view==='home')viewProfile(main,me,true);
   else if(ui.view==='player')viewProfile(main,P(ui.pid),false);
-  else ({ladder:viewLadder,matches:viewMatches,tourn:viewTourn,inbox:viewInbox})[ui.view](main,me);
+  else ({ladder:viewLadder,tourn:viewTourn,inbox:viewInbox})[ui.view](main,me);
 }
 
 function viewLogin(){
@@ -129,11 +130,27 @@ function matchRow(m,pid){
   const o=P(opp(m,pid)),won=m.w===pid,s=setsFor(m,pid),[a,b]=tally(s),t=m.tourn&&tById(m.tourn),d=m.delta?m.delta[pid]:0,pts=m.pts?m.pts[pid]:0;
   return `<div class="mrow"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}</span>
     <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo}${t?` · <button class="link-btn" data-act="topen" data-tid="${t.id}">${esc(t.name)}</button>`:''} · ${ago(m.t)}</span></div>
-    <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${inSeason(m)?`<span class="pts">+${pts} pts</span>`:''}</div></div>`;
+    <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${inSeason(m)?`<span class="pts">+${pts} pts${m.coalPts&&m.w===pid?` · <span class="coal-dot" style="--c:${esc(colorOf(m.coalition))}"></span>+${m.coalPts} ${esc(m.coalition)}`:''}</span>`:''}</div></div>`;
+}
+const coalOf=name=>(S.coalitions||[]).find(c=>c.name===name);
+function profileTabs(p,count){
+  return `<div class="ptabs" role="tablist" aria-label="Profile sections">
+    <button role="tab" data-act="ptab" data-t="profile" aria-selected="${ui.ptab==='profile'}">Profile</button>
+    <button role="tab" data-act="ptab" data-t="matches" aria-selected="${ui.ptab==='matches'}">Matches<span class="count">${count}</span></button></div>`;
 }
 function viewProfile(main,p,isMe){
   const me=P(S.me),ms=matchesOf(p.id),sm=ms.filter(inSeason),rk=rankOf(p.id);
-  const sw=sm.filter(m=>m.w===p.id).length,sDelta=p.r-ratingAtSeasonStart(p);
+  const hero=`<div class="hero">
+      <div class="hero-id"><span class="eyebrow">${isMe?'Your profile':'Player'}</span><h2>${esc(p.name)}</h2>
+        <div class="id-line"><span>${esc(p.login)}</span>${coalChip(p)}${prov(p)?'<span class="chip" title="Rating still settling: fewer than 5 games">provisional</span>':''}</div></div>
+      <div class="rating-block"><span class="eyebrow">Rating</span><span class="rating-big">${Math.round(p.r)}<small>±${Math.round(p.rd)}</small></span></div>
+    </div>`;
+  main.innerHTML=`<section class="panel">${hero}${profileTabs(p,sm.length)}<div id="ptab-body"></div></section>`;
+  const body=main.querySelector('#ptab-body');
+  body.innerHTML=ui.ptab==='matches'?matchesTab(p,isMe):profileTab(p,isMe,me,sm,rk);
+}
+function profileTab(p,isMe,me,sm,rk){
+  const sw=sm.filter(m=>m.w===p.id).length,sDelta=p.r-ratingAtSeasonStart(p),c=coalOf(p.coalition);
   let nudges='';
   if(isMe){
     const next=S.tournaments.filter(t=>['open','live'].includes(t.status)&&myStatus(t)==='joined').sort((a,b)=>a.startsAt-b.startsAt)[0];
@@ -142,67 +159,80 @@ function viewProfile(main,p,isMe){
     if(next)items.push(`<button class="btn btn-sm" data-act="topen" data-tid="${next.id}">${next.status==='live'?'Playing now':'Next up'}: ${esc(next.name)}${next.status==='live'?'':', '+fmtDate(next.startsAt)}</button>`);
     nudges=items.length?`<div class="nudges">${items.join('')}</div>`:'';
   }
-  main.innerHTML=`<section class="panel">
-    <div class="hero">
-      <div class="hero-id"><span class="eyebrow">${isMe?'Your profile':'Player'}</span><h2>${esc(p.name)}</h2>
-        <div class="id-line"><span>${esc(p.login)}</span>${coalChip(p)}${prov(p)?'<span class="chip" title="Rating still settling">provisional</span>':''}</div></div>
-      <div class="rating-block"><span class="eyebrow">Rating</span><span class="rating-big">${Math.round(p.r)}<small>±${Math.round(p.rd)}</small></span></div>
-    </div>
-    <div class="stats">
+  return `<div class="stats">
       <div class="stat"><span class="k">Rank</span><span class="v">${rk?'#'+rk:'–'} <small>of ${ranked().length}</small></span></div>
       <div class="stat"><span class="k">Season record</span><span class="v">${sw}–${sm.length-sw}</span></div>
       <div class="stat"><span class="k">Season points</span><span class="v">${p.pts}</span></div>
       <div class="stat"><span class="k">This season</span><span class="v ${sDelta>=0?'up':'down'}">${fmtD(sDelta)}</span></div>
       <div class="stat"><span class="k">All time</span><span class="v">${p.w}–${p.l}</span></div>
+      ${c?`<div class="stat"><span class="k">For ${esc(c.name)}</span><span class="v">${c.contributors[p.id]||0} <small>pts</small></span></div>`:''}
       ${!isMe?`<div class="stat"><span class="k">Your win chance</span><span class="v">${Math.round(winChance(me,p)*100)}%</span></div>`:''}
     </div>
-    ${nudges}${!isMe?`<div class="actions"><button class="btn btn-primary btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button><button class="btn btn-sm" data-act="newmatch" data-pid="${p.id}">Log a result vs ${esc(first(p))}</button></div>`:''}
-    <h3>Rating history</h3>${ratingChart(p)}
-  </section>
-  <section class="panel"><div class="head-row"><h3>Recent matches</h3>${isMe&&ms.length?'<button class="link-btn" data-act="nav" data-view="matches">All your matches</button>':''}</div>
-    <div class="list">${ms.slice(0,8).map(m=>matchRow(m,p.id)).join('')||'<p class="empty">No matches yet.</p>'}</div></section>`;
+    ${nudges}${!isMe?`<div class="actions"><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}">Log a result vs ${esc(first(p))}</button></div>`:''}
+    <h3>Rating history</h3>${ratingChart(p)}`;
 }
-
-/* ---------- ladder ---------- */
-function viewLadder(main,me){
-  const list=ranked();
-  if(ui.sort==='points')list.sort((a,b)=>b.pts-a.pts||b.r-a.r);
-  const coal=(S.coalitions||[]).map(c=>{const mem=S.players.filter(p=>p.coalition===c),best=mem.filter(p=>games(p)>0).sort((a,b)=>b.r-a.r)[0];
-    return{c,color:mem[0]?coalColor(mem[0]):COAL_COLORS[c]||'var(--muted)',n:mem.length,pts:mem.reduce((s,p)=>s+p.pts,0),best}}).filter(x=>x.n).sort((a,b)=>b.pts-a.pts);
-  main.innerHTML=`<section class="panel">
-    <div class="head-row"><div><h2>${esc(S.season)} ladder</h2><p class="lede">Rating measures skill (Glicko-2) and can go down. Season points reward playing and reset each season.</p></div>
-      <div class="seg" role="group" aria-label="Sort by"><button data-act="sort" data-sort="rating" aria-pressed="${ui.sort==='rating'}">Rating</button><button data-act="sort" data-sort="points" aria-pressed="${ui.sort==='points'}">Season points</button></div></div>
-    ${coal.length?`<div class="coal-row">${coal.map(x=>`<div class="coal-card" style="--c:${esc(x.color)}"><b>${esc(x.c)}</b><span class="num">${x.pts} pts</span><span>${x.n} players${x.best?` · best: ${esc(x.best.name)}`:''}</span></div>`).join('')}</div>`:''}
-    ${list.length?`<div class="tbl-wrap"><table>
-      <thead><tr><th>#</th><th>Player</th><th class="r">Rating</th><th class="r">W–L</th><th>Last 5</th><th class="r">Points</th></tr></thead>
-      <tbody>${list.map((p,i)=>{const f=matchesOf(p.id).slice(0,5).reverse();
-        return `<tr class="${p.id===me.id?'me':''}"><td class="rank">${i+1}</td><td>${nameBtn(p)}</td>
-        <td class="r num">${Math.round(p.r)}${prov(p)?'<span class="chip" title="Rating still settling: few games or high uncertainty">prov.</span>':''}</td>
-        <td class="r num">${p.w}–${p.l}</td>
-        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td>
-        <td class="r num">${p.pts}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="empty">Nobody has played a rated match yet.</p>'}
-  </section>`;
-}
-
-/* ---------- matches ---------- */
-function viewMatches(main,me){
-  const all=matchesOf(me.id),list=ui.scope==='season'?all.filter(inSeason):all;
-  const w=list.filter(m=>m.w===me.id).length,gained=list.reduce((s,m)=>s+(m.delta?m.delta[me.id]:0),0),pts=list.reduce((s,m)=>s+(m.pts?m.pts[me.id]:0),0);
-  const pend=incoming(me.id).length+outgoing(me.id).length;
-  main.innerHTML=`<section class="panel">
-    <div class="head-row"><div><h2>Your matches</h2><p class="lede">Every rated game you've played, with the rating you gained or lost in each.</p></div>
+function matchesTab(p,isMe){
+  const all=matchesOf(p.id),list=ui.scope==='season'?all.filter(inSeason):all;
+  const w=list.filter(m=>m.w===p.id).length,gained=list.reduce((s,m)=>s+(m.delta?m.delta[p.id]:0),0);
+  const pts=list.reduce((s,m)=>s+(m.pts?m.pts[p.id]:0),0),cpts=list.reduce((s,m)=>s+(m.w===p.id?m.coalPts:0),0);
+  const pend=isMe?incoming(p.id).length+outgoing(p.id).length:0;
+  return `<div class="head-row"><p class="lede">${isMe?"Every rated game you've played":'Every rated game '+esc(first(p))+' has played'}, with the rating gained or lost in each.</p>
       <div class="seg" role="group" aria-label="Period"><button data-act="scope" data-scope="season" aria-pressed="${ui.scope==='season'}">${esc(S.season)}</button><button data-act="scope" data-scope="all" aria-pressed="${ui.scope==='all'}">All time</button></div></div>
     <div class="stats">
       <div class="stat"><span class="k">Played</span><span class="v">${list.length}</span></div>
       <div class="stat"><span class="k">Won–lost</span><span class="v">${w}–${list.length-w}</span></div>
       <div class="stat"><span class="k">Rating</span><span class="v ${gained>=0?'up':'down'}">${fmtD(gained)}</span></div>
-      <div class="stat"><span class="k">Match points</span><span class="v">${ui.scope==='season'?pts:'–'}</span></div>
+      ${ui.scope==='season'?`<div class="stat"><span class="k">Match points</span><span class="v">${pts}</span></div>${p.coalition?`<div class="stat"><span class="k">For ${esc(p.coalition)}</span><span class="v">${cpts}</span></div>`:''}`:''}
     </div>
-    <div class="actions"><button class="btn btn-primary btn-sm" data-act="newmatch">Log a result</button><button class="btn btn-sm" data-act="newmatch" data-mode="challenge">Challenge someone</button>
-      ${pend?`<button class="btn btn-sm" data-act="nav" data-view="inbox">${pend} unconfirmed</button>`:''}</div>
-    <div class="list">${list.map(m=>matchRow(m,me.id)).join('')||`<p class="empty">No matches ${ui.scope==='season'?'this season ':''}yet.</p>`}</div>
-    ${ui.scope==='season'?'<p class="note">Tournament placement points come on top of match points in your season total.</p>':''}
+    <div class="actions">${isMe?`<button class="btn btn-new btn-sm" data-act="newmatch">Log a result</button><button class="btn btn-new btn-sm" data-act="newmatch" data-mode="challenge">Challenge someone</button>
+      ${pend?`<button class="btn btn-sm" data-act="nav" data-view="inbox">${pend} unconfirmed</button>`:''}`:`<button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button>`}</div>
+    <div class="list">${list.map(m=>matchRow(m,p.id)).join('')||`<p class="empty">No matches ${ui.scope==='season'?'this season ':''}yet.</p>`}</div>`;
+}
+
+/* ---------- ladder and coalitions ---------- */
+function viewLadder(main,me){
+  const seg=`<div class="seg" role="group" aria-label="Show"><button data-act="lview" data-v="players" aria-pressed="${ui.lview==='players'}">Players</button><button data-act="lview" data-v="coalitions" aria-pressed="${ui.lview==='coalitions'}">Coalitions</button></div>`;
+  if(ui.lview==='coalitions')return viewCoalitions(main,me,seg);
+  const list=ranked();
+  if(ui.sort==='points')list.sort((a,b)=>b.pts-a.pts||b.r-a.r);
+  main.innerHTML=`<section class="panel">
+    <div class="head-row"><div><h2>${esc(S.season)} ladder</h2><p class="lede">Rating measures skill (Glicko-2) and can go down. Season points reward playing and reset each season.</p></div>${seg}</div>
+    <div class="head-row"><span class="lbl">Sort by</span><div class="seg" role="group" aria-label="Sort by"><button data-act="sort" data-sort="rating" aria-pressed="${ui.sort==='rating'}">Rating</button><button data-act="sort" data-sort="points" aria-pressed="${ui.sort==='points'}">Season points</button></div></div>
+    ${list.length?`<div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Player</th><th class="r">Rating</th><th class="r">W–L</th><th>Last 5</th><th class="r">Points</th></tr></thead>
+      <tbody>${list.map((p,i)=>{const f=matchesOf(p.id).slice(0,5).reverse();
+        return `<tr class="${p.id===me.id?'me':''}"><td class="rank">${i+1}</td><td>${nameBtn(p)}</td>
+        <td class="r num">${Math.round(p.r)}${prov(p)?'<span class="chip" title="Rating still settling: fewer than 5 games">prov.</span>':''}</td>
+        <td class="r num">${p.w}–${p.l}</td>
+        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td>
+        <td class="r num">${p.pts}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="empty">Nobody has played a rated match yet.</p>'}
   </section>`;
+}
+function viewCoalitions(main,me,seg){
+  const cs=S.coalitions||[],max=Math.max(1,...cs.map(c=>c.points)),R=S.coalitionRules;
+  const top=c=>Object.entries(c.contributors).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,n])=>`<button class="link-btn" style="opacity:1" data-act="player" data-pid="${id}">${esc(first(P(id)))}</button> ${n}`).join(' · ');
+  main.innerHTML=`<section class="panel">
+    <div class="head-row"><div><h2>Coalition race</h2><p class="lede">Vela, Cetus and Pyxis compete all season. Win against another coalition and your coalition scores.</p></div>${seg}</div>
+    <div class="race">${cs.map((c,i)=>`<div class="race-row ${c.name===me.coalition?'mine':''}" style="--c:${esc(colorOf(c.name))}">
+      <span class="rank">${i+1}</span>
+      <div class="race-main"><div class="race-name"><b>${esc(c.name)}</b>${c.name===me.coalition?'<span class="chip">your coalition</span>':''}<span class="race-pts num">${c.points} pts</span></div>
+        <div class="race-bar" role="img" aria-label="${esc(c.name)}: ${c.points} points"><i style="width:${(c.points/max*100).toFixed(1)}%"></i></div>
+        <span class="sub">${c.wins}–${c.losses} against other coalitions · ${c.members} players${Object.keys(c.contributors).length?' · top scorers: '+top(c):''}</span></div>
+    </div>`).join('')}</div>
+  </section>
+  <section class="panel"><h3>Head to head this season</h3>
+    <div class="tbl-wrap"><table class="h2h"><thead><tr><th></th>${cs.map(c=>`<th class="r"><span class="coal-dot" style="--c:${esc(colorOf(c.name))}"></span>vs ${esc(c.name)}</th>`).join('')}</tr></thead>
+    <tbody>${cs.map(a=>`<tr><td><span class="coal-dot" style="--c:${esc(colorOf(a.name))}"></span><b>${esc(a.name)}</b></td>${cs.map(b=>a.name===b.name?'<td class="r muted">–</td>':`<td class="r num">${(a.vs[b.name]||{w:0}).w}–${(a.vs[b.name]||{l:0}).l}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <p class="note">Wins–losses of each row's players against the column's players.</p></section>
+  <section class="panel"><h3>How coalition points work</h3>
+    <ul class="rules">
+      <li>A win against a player from another coalition earns your coalition <b>${R.win}</b> points, or <b>${R.win+R.upsetBonus}</b> for an upset against someone rated 50 or more higher.</li>
+      <li>Losing costs your coalition nothing, but the other coalition scores.</li>
+      <li>Matches within your own coalition don't count.</li>
+      <li>Only the first ${R.pairWeeklyCap} matches between the same two players each week count.</li>
+      <li>Tournaments: the champion's coalition gets <b>${R.champion}</b>, the runner-up's <b>${R.runnerUp}</b>, each semifinalist's <b>${R.semifinal}</b>.</li>
+      <li>Points reset each season.</li>
+    </ul></section>`;
 }
 
 /* ---------- set entry ---------- */
@@ -253,7 +283,7 @@ function renderNewMatch(){
     ${nm.mode==='log'?`<div id="nm-sets"></div><p class="note">Your opponent confirms the result before ratings change. If they don't respond, it confirms itself after ${S.autoConfirmHours} hours.</p>`:
       `<div class="field" style="max-width:none"><label for="nm-msg">Message (optional)</label><input id="nm-msg" type="text" maxlength="140" placeholder="e.g. Lunch tomorrow at 12:30?"></div>`}
     <div id="nm-status" class="status" aria-live="polite"></div>
-    <div class="actions"><button id="nm-send" class="btn btn-primary" disabled>${nm.mode==='log'?'Send for confirmation':'Send challenge'}</button></div>
+    <div class="actions"><button id="nm-send" class="btn btn-new" disabled>${nm.mode==='log'?'Send for confirmation':'Send challenge'}</button></div>
   </div></div>`;
   const sel=root.querySelector('#nm-opp'),pred=root.querySelector('#nm-pred'),st=root.querySelector('#nm-status'),send=root.querySelector('#nm-send');
   let state={sets:[],decided:false,err:''};
@@ -304,7 +334,7 @@ function viewInbox(main,me){
       ...ch.filter(c=>c.to===me.id&&c.status==='open').map(c=>line(`<span><b>${esc(P(c.from).name)}</b> challenges you to a best of ${c.bo}</span><span class="sub">${quote(c)}${ago(c.created)}</span>`,
         `<button class="btn btn-good btn-sm" data-act="caccept" data-cid="${c.id}">Accept</button><button class="btn btn-sm" data-act="cdecline" data-cid="${c.id}">Decline</button>`)),
       ...ch.filter(c=>c.status==='accepted').map(c=>{const o=P(c.from===me.id?c.to:c.from);return line(`<span>Best of ${c.bo} with <b>${esc(o.name)}</b> <span class="chip win">accepted</span></span><span class="sub">${quote(c)}play it, then log the result</span>`,
-        `<button class="btn btn-primary btn-sm" data-act="newmatch" data-pid="${o.id}" data-bo="${c.bo}">Log result</button><button class="btn btn-sm" data-act="${c.from===me.id?'ccancel':'cdecline'}" data-cid="${c.id}">Call it off</button>`)}),
+        `<button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${o.id}" data-bo="${c.bo}">Log result</button><button class="btn btn-sm" data-act="${c.from===me.id?'ccancel':'cdecline'}" data-cid="${c.id}">Call it off</button>`)}),
       ...ch.filter(c=>c.from===me.id&&c.status==='open').map(c=>line(`<span>You challenged <b>${esc(P(c.to).name)}</b> to a best of ${c.bo}</span><span class="sub">waiting for an answer · ${ago(c.created)}</span>`,
         `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${c.to}" data-then="inbox">Sign in as ${esc(P(c.to).login)}</button>`:''}<button class="btn btn-sm" data-act="ccancel" data-cid="${c.id}">Withdraw</button>`))]),
     section('Tournament invites','',myInvites().map(t=>line(`<span><b>${esc(t.name)}</b></span><span class="sub">${fmtDate(t.startsAt)} ${fmtTime(t.startsAt)} · invited by ${esc(P(t.createdBy).name)}</span>`,
@@ -331,7 +361,7 @@ function viewTourn(main,me){
   if(ui.tid&&tById(ui.tid))return viewTDetail(main,me,tById(ui.tid));
   const head=`<div class="head-row"><div><h2>Tournaments</h2><p class="lede">Anyone can plan one.${S.requireApproval?' New tournaments show up after an admin approves them.':''}</p></div>
     <div class="actions"><div class="seg" role="group" aria-label="View"><button data-act="tview" data-v="overview" aria-pressed="${ui.tview==='overview'}">Overview</button><button data-act="tview" data-v="calendar" aria-pressed="${ui.tview==='calendar'}">Calendar</button></div>
-    <button class="btn btn-primary btn-sm" data-act="tplan">Plan a tournament</button></div></div>`;
+    <button class="btn btn-new btn-sm" data-act="tplan">Plan a tournament</button></div></div>`;
   if(ui.tview==='calendar'){main.innerHTML=`<section class="panel">${head}${calendar()}</section>`;return}
   const up=upcoming().slice(0,5),rc=recent().slice(0,5);
   main.innerHTML=`<section class="panel">${head}
@@ -445,7 +475,7 @@ function viewPlan(main,me){
       <label class="check" for="tp-open"><input id="tp-open" type="checkbox" checked> Anyone can sign up</label>
       <label class="check" for="tp-play"><input id="tp-play" type="checkbox" checked> I'm playing too</label></div>
     <details><summary>Invite players (optional)</summary><div class="checks" style="margin-top:10px">${S.players.filter(p=>p.id!==me.id).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<label><input type="checkbox" class="tp-inv" value="${p.id}" id="tpi-${p.id}">${esc(p.name)}<span>${Math.round(p.r)}</span></label>`).join('')}</div></details>
-    <div class="actions"><button class="btn btn-primary" data-act="tcreate">${needsApproval?'Send for approval':'Publish'}</button><button class="btn" data-act="tback">Cancel</button></div>
+    <div class="actions"><button class="btn btn-new" data-act="tcreate">${needsApproval?'Send for approval':'Publish'}</button><button class="btn" data-act="tback">Cancel</button></div>
   </section>`;
   watchBo7('tp');
 }
@@ -484,7 +514,9 @@ document.addEventListener('click',e=>{
     case 'devlogin':act(async()=>{await api('/auth/dev-login',{userId:Number(el.dataset.pid)});ui.view=el.dataset.then||'home';ui.pid=null;await refresh();if(el.dataset.then)toast(`Signed in as ${P(S.me).login}.`)});break;
     case 'signout':act(async()=>{await api('/auth/logout',{});S=null;render();loadDevUsers()});break;
     case 'nav':if(el.dataset.view==='tourn'){ui.tid=null;ui.tplan=false}go(el.dataset.view);break;
-    case 'player':ui.pid=Number(el.dataset.pid);go(ui.pid===S.me?'home':'player');break;
+    case 'player':ui.pid=Number(el.dataset.pid);ui.ptab='profile';go(ui.pid===S.me?'home':'player');break;
+    case 'ptab':ui.ptab=el.dataset.t;render();break;
+    case 'lview':ui.lview=el.dataset.v;render();break;
     case 'newmatch':openNewMatch({opp:el.dataset.pid||'',mode:el.dataset.mode||'log',bo:el.dataset.bo?Number(el.dataset.bo):undefined});break;
     case 'nm-mode':nm.mode=el.dataset.mode;nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
     case 'nm-bo':nm.bo=Number(el.dataset.bo);nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;

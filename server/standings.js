@@ -1,6 +1,7 @@
 // Replays every confirmed match in order to produce ratings, records and season points.
 // Recomputing from the log keeps every number auditable and makes rule changes safe.
 const rules = require('./rules');
+const MULT = require('./matchups').MATCHUPS.multiplier; // challenger matches count triple
 
 const POINTS = { win: 3, loss: 1, upsetBonus: 2, upsetMargin: 50, champion: 10, runnerUp: 6, semifinal: 3 };
 
@@ -44,7 +45,7 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
   }
 
   const meta = new Map(); // matchId -> {delta, pts, upset}
-  const rows = db.prepare(`SELECT id, reporter_id, opponent_id, winner_id, confirmed_at FROM matches
+  const rows = db.prepare(`SELECT id, reporter_id, opponent_id, winner_id, confirmed_at, matchup_id FROM matches
                            WHERE status = 'confirmed' ORDER BY confirmed_at, id`).all();
   for (const m of rows) {
     const A = players.get(m.reporter_id), B = players.get(m.opponent_id);
@@ -54,22 +55,24 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
     const upset = W.r < L.r - POINTS.upsetMargin;
     const na = rules.glicko(A, B, aWon ? 1 : 0), nb = rules.glicko(B, A, aWon ? 0 : 1);
     const inSeason = inRange(m.confirmed_at);
-    const wPts = inSeason ? POINTS.win + (upset ? POINTS.upsetBonus : 0) : 0;
-    const lPts = inSeason ? POINTS.loss : 0;
+    const x = m.matchup_id ? MULT : 1;
+    const wPts = inSeason ? (POINTS.win + (upset ? POINTS.upsetBonus : 0)) * x : 0;
+    const lPts = inSeason ? POINTS.loss * x : 0;
     // Coalition race
     let coalPts = 0;
     const cw = coalitionOf.get(W.id), cl = coalitionOf.get(L.id);
     if (inSeason && cw && cl && cw !== cl) {
+      // Challenger matches don't count toward (or get reduced by) the weekly limit per pair.
       const key = `${Math.min(A.id, B.id)}-${Math.max(A.id, B.id)}-${Math.floor(m.confirmed_at / WEEK)}`;
-      const n = (pairWeek.get(key) || 0) + 1;
-      pairWeek.set(key, n);
+      const n = m.matchup_id ? 1 : (pairWeek.get(key) || 0) + 1;
+      if (!m.matchup_id) pairWeek.set(key, n);
       coal(cw).wins++; coal(cl).losses++;
       coal(cw).vs[cl] = coal(cw).vs[cl] || { w: 0, l: 0 }; coal(cw).vs[cl].w++;
       coal(cl).vs[cw] = coal(cl).vs[cw] || { w: 0, l: 0 }; coal(cl).vs[cw].l++;
-      coalPts = coalitionWinPoints(gap, n);
+      coalPts = coalitionWinPoints(gap, n) * x;
       scoreCoalition(W.id, coalPts);
     }
-    meta.set(m.id, { delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset, coalPts, coalition: coalPts ? cw : null });
+    meta.set(m.id, { delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset, coalPts, coalition: coalPts ? cw : null, challenger: !!m.matchup_id });
     Object.assign(A, na); Object.assign(B, nb);
     W.w++; L.l++; W.pts += wPts; L.pts += lPts;
     A.hist.push({ t: m.confirmed_at, r: A.r }); B.hist.push({ t: m.confirmed_at, r: B.r });

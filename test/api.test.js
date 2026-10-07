@@ -4,11 +4,11 @@ const { open } = require('../server/db');
 const { buildApp } = require('../server/app');
 const { loadConfig } = require('../server/config');
 
-async function setup() {
+async function setup(extra = {}) {
   const db = open(':memory:');
   const ins = db.prepare('INSERT INTO users (login, name, created_at) VALUES (?, ?, 0)');
   for (const l of ['alice', 'bob', 'carol', 'dave']) ins.run(l, l[0].toUpperCase() + l.slice(1));
-  const app = buildApp({ ...loadConfig({}), logger: false }, db);
+  const app = buildApp({ ...loadConfig({}), logger: false, matchupsEnabled: false, ...extra }, db);
   const login = async (userId) => {
     const r = await app.inject({ method: 'POST', url: '/auth/dev-login', payload: { userId } });
     return r.headers['set-cookie'].split(';')[0];
@@ -194,4 +194,55 @@ test('tournament players each earn +1 for their coalition, plus placement points
   assert.equal(c.points, matchPts + 1 + 10, 'champion: match points + 1 for playing + 10 for winning');
   const total = st.coalitions.reduce((s, x) => s + x.points, 0) - st.matches.reduce((s, m) => s + m.coalPts, 0);
   assert.equal(total, 3 + 10 + 6 + 3, '3 players x 1, champion 10, runner-up 6, beaten semifinalist 3');
+});
+
+test('a challenger approaches: everyone gets a weekly matchup, it counts triple, finishers get a bonus round', async () => {
+  const { db, login, call } = await setup({ matchupsEnabled: true });
+  db.prepare(`UPDATE users SET coalition = CASE id WHEN 1 THEN 'Vela' WHEN 2 THEN 'Cetus' WHEN 3 THEN 'Pyxis' ELSE 'Vela' END`).run();
+  const tokens = {}; for (const id of [1, 2, 3, 4]) tokens[id] = await login(id);
+  let st = (await call(tokens[1], 'GET', '/api/state')).body;
+  const weekly = st.matchups.filter((m) => m.kind === 'weekly');
+  for (const id of [1, 2, 3, 4]) assert.ok(weekly.some((m) => m.a === id || m.b === id), `player ${id} has a challenger`);
+  assert.equal((await call(tokens[1], 'GET', '/api/state')).body.matchups.length, weekly.length, 'draw happens once a week');
+
+  // Play both weekly matchups; the reporter wins each.
+  for (const m of weekly.slice(0, 2)) {
+    const r = await call(tokens[m.a], 'POST', '/api/matches', { opponentId: m.b, bestOf: 3, sets: [[11, 5], [11, 5]] });
+    assert.equal(r.body.challenger, true);
+    await call(tokens[m.b], 'POST', `/api/matches/${r.body.id}/confirm`, {});
+  }
+  st = (await call(tokens[1], 'GET', '/api/state')).body;
+  const done = st.matches.filter((m) => m.matchup);
+  for (const m of done) {
+    const loser = m.w === m.a ? m.b : m.a;
+    assert.ok(m.pts[m.w] >= 9, 'winner: 3x season points');
+    assert.equal(m.pts[loser], 3, 'loser: 3x the point for playing');
+    if (m.coalPts) assert.ok(m.coalPts >= 9, 'coalition points tripled');
+  }
+  assert.ok(done.every((m) => st.players.find((p) => p.id === m.w).r < 1700), 'rating is not multiplied');
+  const bonus = st.matchups.filter((m) => m.kind === 'bonus');
+  assert.ok(bonus.length >= 1, 'players who finished get a bonus challenger');
+});
+
+test('pairing puts everyone in a pair, even with an odd number of players', () => {
+  const { pair } = require('../server/matchups');
+  const ids = [1, 2, 3, 4, 5], ratings = new Map(ids.map((id) => [id, 1500 + id * 40]));
+  const pairs = pair(ids, ratings, new Map(), new Set());
+  for (const id of ids) assert.ok(pairs.some((p) => p.includes(id)), `${id} paired`);
+  assert.equal(pairs.length, 3);
+});
+
+test('pairing keeps players inside the rating band when it can', () => {
+  const { pair, MATCHUPS } = require('../server/matchups');
+  const ratings = new Map([[1, 1300], [2, 1350], [3, 1500], [4, 1520], [5, 1800], [6, 1850], [7, 1600], [8, 1650]]);
+  for (let i = 0; i < 50; i++) {
+    for (const [a, b] of pair([...ratings.keys()], ratings, new Map(), new Set()))
+      assert.ok(Math.abs(ratings.get(a) - ratings.get(b)) <= MATCHUPS.ratingBand, `${a} vs ${b} outside the band`);
+  }
+});
+
+test('bonus rounds never repeat a pair from the same week', () => {
+  const { pair } = require('../server/matchups');
+  const ratings = new Map([[1, 1500], [2, 1500]]);
+  assert.deepEqual(pair([1, 2], ratings, new Map(), new Set(), Math.random, { forbid: new Set(['1-2']), everyone: false }), []);
 });

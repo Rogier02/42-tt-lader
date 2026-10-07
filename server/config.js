@@ -21,6 +21,8 @@ function loadConfig(env = process.env) {
     autoConfirmHours: Number(env.AUTO_CONFIRM_HOURS || 24),
     // New tournaments wait for an admin's approval unless this is set to false.
     requireApproval: (env.REQUIRE_TOURNAMENT_APPROVAL || 'true').toLowerCase() !== 'false',
+    // Weekly "A challenger approaches" matchups.
+    matchupsEnabled: (env.CHALLENGERS || 'true').toLowerCase() !== 'false',
     coalitions: list(env.COALITIONS || 'Vela,Cetus,Pyxis'),
   };
   if (!cfg.cookieSecret) {

@@ -299,6 +299,24 @@ details.season>summary:hover .season-name b{text-decoration:underline;text-under
 .season-coal .race-name b{font-size:1.15rem}
 .tops{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:2px;font-size:.92rem}
 .tops li span{float:right;color:var(--muted)}
+/* ---- v5: a challenger approaches ---- */
+.challenger{border:2px solid var(--ball);border-radius:10px;background:var(--surface);padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.challenger.quiet{border:1px dashed var(--line)}
+.ch-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ch-title{font-family:var(--f-display);font-weight:700;font-size:1.6rem;text-transform:uppercase;letter-spacing:.03em}
+.ch-mult{font-family:var(--f-display);font-weight:700;font-size:1.6rem;color:var(--ball)}
+.ch-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.ch-row>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ch-row .sub{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ch-name{font-size:1.15rem;font-weight:600}
+.ch-row.done{color:var(--muted)}
+.chip.ch{background:var(--ball);color:#1b0f05;border-color:transparent}
+.ch-board{display:flex;flex-direction:column}
+.ch-pair{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line);font-size:.95rem}
+.ch-pair:last-child{border-bottom:0}
+.ch-pair .vs{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em}
+.ch-pair .w{font-weight:600}
+.ch-pair .chip:last-child{margin-left:auto}
 </style>
 </head>
 <body>

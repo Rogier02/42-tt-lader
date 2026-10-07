@@ -127,6 +127,27 @@ function migrate(db) {
       COMMIT;
     `);
   }
+  if (version < 4) {
+    db.exec(`
+      BEGIN;
+      -- "A challenger approaches": matchups the app hands out every week.
+      -- A matchup is completed when a confirmed match points to it (matches.matchup_id).
+      CREATE TABLE matchups (
+        id         INTEGER PRIMARY KEY,
+        week       TEXT NOT NULL,            -- start of the week it belongs to, e.g. 2026-10-05
+        kind       TEXT NOT NULL CHECK (kind IN ('weekly','bonus')),
+        a_id       INTEGER NOT NULL REFERENCES users(id),
+        b_id       INTEGER NOT NULL REFERENCES users(id),
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE INDEX matchups_week ON matchups(week);
+      ALTER TABLE matches ADD COLUMN matchup_id INTEGER REFERENCES matchups(id);
+      ALTER TABLE users ADD COLUMN matchups_opt_out INTEGER NOT NULL DEFAULT 0;
+      PRAGMA user_version = 4;
+      COMMIT;
+    `);
+  }
 }
 
 module.exports = { open };

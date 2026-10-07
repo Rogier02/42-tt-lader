@@ -1,5 +1,6 @@
 // Friendly matches and challenges between two players.
 const rules = require('../rules');
+const matchups = require('../matchups');
 
 module.exports = function matchRoutes(app, { db, now, fail, auth, standings, invalidate }) {
   const userExists = (id) => db.prepare('SELECT id FROM users WHERE id = ?').get(Number(id));
@@ -13,12 +14,13 @@ module.exports = function matchRoutes(app, { db, now, fail, auth, standings, inv
     if (err) return fail(reply, 400, err);
     const [a, b] = rules.tally(sets);
     const winner = a > b ? req.user.id : opp.id;
-    const id = Number(db.prepare(`INSERT INTO matches (reporter_id, opponent_id, best_of, sets, winner_id, status, created_at)
-                                  VALUES (?, ?, ?, ?, ?, 'pending', ?)`).run(req.user.id, opp.id, Number(bestOf), JSON.stringify(sets), winner, now()).lastInsertRowid);
+    const mu = matchups.openBetween(db, req.user.id, opp.id, now());
+    const id = Number(db.prepare(`INSERT INTO matches (reporter_id, opponent_id, best_of, sets, winner_id, status, created_at, matchup_id)
+                                  VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`).run(req.user.id, opp.id, Number(bestOf), JSON.stringify(sets), winner, now(), mu ? mu.id : null).lastInsertRowid);
     // Playing an accepted challenge closes it.
     db.prepare(`UPDATE challenges SET status = 'played', responded_at = ? WHERE status = 'accepted'
                 AND ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))`).run(now(), req.user.id, opp.id, opp.id, req.user.id);
-    return { id };
+    return { id, challenger: !!mu };
   });
 
   function changeStatus(req, reply, { from, to, who }) {

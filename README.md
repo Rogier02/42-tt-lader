@@ -78,6 +78,12 @@ You can also set these optional values:
   - A loss costs nothing, but the other coalition scores.
   - Your first 3 matches against the same player each week score in full. After that, each win still earns 1 point, so variety pays more but playing the same person still counts.
   - Tournaments: every player earns +1 for their coalition for taking part. On top of that, placements score 10 for the champion, 6 for the runner-up and 3 for each semifinalist.
+- **A challenger approaches:** every Monday at 08:00 the app gives every player a challenger. Opponents are random within 150 rating points, preferring someone from another coalition and someone you haven't played lately. With an odd number of players, one player gets two challengers.
+  - Players have a week to play their challenger. Nothing happens if they don't.
+  - Both players earn 3× season points and the winner earns 3× coalition points. Ratings count as normal.
+  - Players who finish their challenge can be drawn again for one bonus round that week, always against someone new.
+  - Players can switch weekly challengers off on their profile.
+  - The settings are in `MATCHUPS` in `server/matchups.js`.
 - **Seasons:** an admin ends the current season from Ladder → Coalitions. That freezes the final standings (winning coalition, its top scorers and the MVP) and starts the next season right away. Season points and the coalition race reset; ratings carry over. Admins can also set a season name, a planned end date and a prize, which players see above the race. Past seasons are listed in the season history.
   - The numbers are in `COALITION_POINTS` in `server/standings.js`.
   - Coalition team matches (2v2, 3v3) are a planned next step.

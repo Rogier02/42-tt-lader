@@ -2,6 +2,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const Fastify = require('fastify');
 const { compute, COALITION_POINTS } = require('./standings');
+const matchups = require('./matchups');
 const { assignMissing } = require('./coalitions');
 const { ensureSeason, currentSeason, seasonRoutes } = require('./routes/seasons');
 
@@ -31,6 +32,8 @@ function buildApp(config, db) {
   function standings() {
     autoConfirm();
     if (!cache) cache = compute(db, currentSeason(db).starts_at, config.coalitions);
+    // Weekly challenger draw and bonus rounds. Cheap when there's nothing to do.
+    if (config.matchupsEnabled && matchups.tick(db, new Map([...cache.players.values()].map((p) => [p.id, p.r])))) cache = compute(db, currentSeason(db).starts_at, config.coalitions);
     return cache;
   }
   const timer = setInterval(autoConfirm, 5 * 60e3);
@@ -153,7 +156,7 @@ function buildApp(config, db) {
     const matches = rows.map((m) => {
       const x = st.meta.get(m.id) || {};
       return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets: JSON.parse(m.sets), w: m.winner_id, status: m.status,
-        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null };
+        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
     });
     const setsById = new Map(rows.map((m) => [m.id, JSON.parse(m.sets)]));
 
@@ -187,7 +190,22 @@ function buildApp(config, db) {
     return { me: me.id, isAdmin, authMode: config.authMode, season: cur.name, seasonStart: cur.starts_at,
       currentSeason: { id: cur.id, name: cur.name, startsAt: cur.starts_at, plannedEnd: cur.planned_end, prize: cur.prize }, seasons,
       autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS,
-      players, matches, tournaments, challenges };
+      players, matches, tournaments, challenges, ...matchupState(me) };
+  });
+
+  // ---------- challenger matchups ----------
+  function matchupState(me) {
+    const week = matchups.weekStart(now());
+    const rows = db.prepare(`SELECT m.*, (SELECT x.id FROM matches x WHERE x.matchup_id = m.id AND x.status = 'confirmed' LIMIT 1) AS done_match,
+                             (SELECT x.id FROM matches x WHERE x.matchup_id = m.id AND x.status = 'pending' LIMIT 1) AS pending_match
+                             FROM matchups m WHERE m.created_at >= ? ORDER BY m.created_at`).all(week);
+    const list = rows.map((m) => ({ id: m.id, kind: m.kind, a: m.a_id, b: m.b_id, expiresAt: m.expires_at,
+      status: m.done_match ? 'done' : m.pending_match ? 'pending' : m.expires_at <= now() ? 'expired' : 'open', matchId: m.done_match || m.pending_match || null }));
+    return { matchups: list, matchupRules: matchups.MATCHUPS, matchupsOptOut: !!me.matchups_opt_out, nextDraw: week + 7 * 864e5 };
+  }
+  app.post('/api/me/matchups', { preHandler: auth }, async (req) => {
+    db.prepare('UPDATE users SET matchups_opt_out = ? WHERE id = ?').run(req.body?.enabled === false ? 1 : 0, req.user.id);
+    return { ok: true };
   });
 
   require('./routes/matches')(app, ctx);

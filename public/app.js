@@ -75,7 +75,40 @@ const stChip=t=>`<span class="chip st-${t.status}">${STATUS_LABEL[t.status]}</sp
 const incomingChallenges=()=>S.challenges.filter(c=>c.to===S.me&&c.status==='open');
 const myInvites=()=>S.tournaments.filter(t=>t.status==='open'&&myStatus(t)==='invited');
 const approvals=()=>S.isAdmin?S.tournaments.filter(t=>t.status==='proposed'):[];
-const inboxCount=()=>incoming(S.me).length+incomingChallenges().length+myInvites().length+approvals().length;
+const inboxCount=()=>incoming(S.me).length+incomingChallenges().length+myInvites().length+approvals().length+(S.matchups||[]).filter(m=>(m.a===S.me||m.b===S.me)&&m.status==='open').length;
+
+/* ---------- a challenger approaches ---------- */
+const myMatchups=()=>(S.matchups||[]).filter(m=>m.a===S.me||m.b===S.me);
+const openMatchups=()=>myMatchups().filter(m=>m.status==='open');
+const muOpp=m=>P(m.a===S.me?m.b:m.a);
+const isChallenger=id=>openMatchups().some(m=>muOpp(m).id===Number(id));
+function challengerCard(){
+  if(!S.matchups)return '';
+  const mine=myMatchups().filter(m=>m.status!=='expired'),X=S.matchupRules.multiplier;
+  const doneCount=mine.filter(m=>m.status==='done').length;
+  if(!mine.length)return S.matchupsOptOut?'':`<div class="challenger quiet"><span class="eyebrow">A challenger approaches</span><p class="sub">Your first challenger arrives ${fmtDate(S.nextDraw)}.</p></div>`;
+  const rows=mine.map(m=>{
+    const o=muOpp(m),me=P(S.me),bonus=m.kind==='bonus'?'<span class="chip warn">bonus round</span>':'';
+    if(m.status==='done'){const mt=S.matches.find(x=>x.id===m.matchId),won=mt&&mt.w===S.me;
+      return `<div class="ch-row done"><div><b>${esc(o.name)}</b> ${bonus}<span class="sub">Done: you ${won?'won':'lost'} and earned ${mt&&mt.pts?mt.pts[S.me]:0} season points${won&&mt.coalPts?`, +${mt.coalPts} for ${esc(mt.coalition)}`:''}.</span></div></div>`}
+    if(m.status==='pending')return `<div class="ch-row"><div><b>${esc(o.name)}</b> ${bonus}<span class="sub">Result logged, waiting for confirmation.</span></div><button class="btn btn-sm" data-act="nav" data-view="inbox">Inbox</button></div>`;
+    return `<div class="ch-row"><div class="ch-vs"><span class="ch-name">You vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button></span> ${bonus}
+        <span class="sub">${coalChip(o)} ${Math.round(o.r)} rating · your win chance ${Math.round(winChance(me,o)*100)}% · play before ${fmtDate(m.expiresAt)}</span></div>
+      <button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${o.id}">Log result</button></div>`;
+  }).join('');
+  const waiting=doneCount>0&&!mine.some(m=>m.status==='open'||m.status==='pending')&&mine.length<S.matchupRules.maxPerWeek;
+  return `<div class="challenger"><div class="ch-head"><span class="ch-title">A challenger approaches</span><span class="ch-mult">${X}× points</span></div>
+    <p class="sub">Find them on campus or on Slack and play. Both of you earn ${X}× season points, and the winner earns ${X}× coalition points. Ratings count as normal.</p>
+    ${rows}${waiting?`<p class="sub">Finished this week's challenge. When another player finishes theirs, you'll be drawn for a bonus round.</p>`:''}</div>`;
+}
+function challengerBoard(){
+  const all=(S.matchups||[]);if(!all.length)return '';
+  const label={open:'<span class="chip">to play</span>',pending:'<span class="chip warn">waiting</span>',done:'<span class="chip win">played</span>',expired:'<span class="chip">expired</span>'};
+  const played=all.filter(m=>m.status==='done').length;
+  return `<section class="panel"><div class="head-row"><h3>Challenger matches this week</h3><span class="sub">${played} of ${all.length} played · ${S.matchupRules.multiplier}× points</span></div>
+    <div class="ch-board">${all.map(m=>{const a=P(m.a),b=P(m.b),mt=m.matchId&&S.matches.find(x=>x.id===m.matchId),w=m.status==='done'&&mt?mt.w:null;
+      return `<div class="ch-pair"><span class="${w===a.id?'w':''}">${coalDot(a)}${esc(a.name)}</span><span class="vs">vs</span><span class="${w===b.id?'w':''}">${coalDot(b)}${esc(b.name)}</span>${m.kind==='bonus'?'<span class="chip warn">bonus</span>':''}${label[m.status]}</div>`}).join('')}</div></section>`;
+}
 
 /* ---------- shell ---------- */
 function render(){
@@ -128,7 +161,7 @@ function ratingChart(p){
 }
 function matchRow(m,pid){
   const o=P(opp(m,pid)),won=m.w===pid,s=setsFor(m,pid),[a,b]=tally(s),t=m.tourn&&tById(m.tourn),d=m.delta?m.delta[pid]:0,pts=m.pts?m.pts[pid]:0;
-  return `<div class="mrow"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}</span>
+  return `<div class="mrow"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}${m.matchup?` <span class="chip ch">${S.matchupRules?S.matchupRules.multiplier:3}× challenger</span>`:''}</span>
     <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo}${t?` · <button class="link-btn" data-act="topen" data-tid="${t.id}">${esc(t.name)}</button>`:''} · ${ago(m.t)}</span></div>
     <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${inSeason(m)?`<span class="pts">+${pts} pts${m.coalPts&&m.w===pid?` · <span class="coal-dot" style="--c:${esc(colorOf(m.coalition))}"></span>+${m.coalPts} ${esc(m.coalition)}`:''}</span>`:''}</div></div>`;
 }
@@ -145,7 +178,7 @@ function viewProfile(main,p,isMe){
         <div class="id-line"><span>${esc(p.login)}</span>${coalChip(p)}${prov(p)?'<span class="chip" title="Rating still settling: fewer than 5 games">provisional</span>':''}</div></div>
       <div class="rating-block"><span class="eyebrow">Rating</span><span class="rating-big">${Math.round(p.r)}<small>±${Math.round(p.rd)}</small></span></div>
     </div>`;
-  main.innerHTML=`<section class="panel">${hero}${profileTabs(p,sm.length)}<div id="ptab-body"></div></section>`;
+  main.innerHTML=`${isMe?challengerCard():''}<section class="panel">${hero}${profileTabs(p,sm.length)}<div id="ptab-body"></div></section>`;
   const body=main.querySelector('#ptab-body');
   body.innerHTML=ui.ptab==='matches'?matchesTab(p,isMe):profileTab(p,isMe,me,sm,rk);
 }
@@ -168,7 +201,7 @@ function profileTab(p,isMe,me,sm,rk){
       ${c?`<div class="stat"><span class="k">For ${esc(c.name)}</span><span class="v">${c.contributors[p.id]||0} <small>pts</small></span></div>`:''}
       ${!isMe?`<div class="stat"><span class="k">Your win chance</span><span class="v">${Math.round(winChance(me,p)*100)}%</span></div>`:''}
     </div>
-    ${nudges}${!isMe?`<div class="actions"><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}">Log a result vs ${esc(first(p))}</button></div>`:''}
+    ${nudges}${isMe&&S.matchupRules?`<label class="check" for="mu-opt"><input id="mu-opt" type="checkbox" data-act-change="muopt" ${S.matchupsOptOut?'':'checked'}> Give me a weekly challenger</label>`:''}${!isMe?`<div class="actions"><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button><button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}">Log a result vs ${esc(first(p))}</button></div>`:''}
     <h3>Rating history</h3>${ratingChart(p)}`;
 }
 function matchesTab(p,isMe){
@@ -257,6 +290,7 @@ function viewCoalitions(main,me,seg){
     </div>`).join('')}</div>
     ${admin}
   </section>
+  ${challengerBoard()}
   <section class="panel"><h3>Season history</h3>
     <div class="seasons">${hist||'<p class="empty">No finished seasons yet. When an admin ends this season, its winner shows up here.</p>'}</div></section>
   <section class="panel"><h3>Head to head this season</h3>
@@ -271,6 +305,7 @@ function viewCoalitions(main,me,seg){
       <li>Matches within your own coalition don't count.</li>
       <li>Your first ${R.fullPerPairPerWeek} matches against the same player each week score in full. After that, each win still earns <b>${R.afterCap}</b> point, so playing different people pays more.</li>
       <li>Tournaments: every player earns <b>+${R.tournamentPlayer}</b> for their coalition for taking part. On top of that, the champion's coalition gets <b>${R.champion}</b>, the runner-up's <b>${R.runnerUp}</b>, each semifinalist's <b>${R.semifinal}</b>.</li>
+      <li>A challenger approaches: every week the app pairs everyone with an opponent. Those matches count <b>${S.matchupRules?S.matchupRules.multiplier:3}×</b> for season and coalition points.</li>
       <li>The coalition with the most points when the season ends wins it. Points reset each season.</li>
     </ul></section>`;
 }
@@ -316,7 +351,7 @@ function renderNewMatch(){
   root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="nmh">
     <div class="head-row"><h3 id="nmh">New match</h3><button class="link-btn" data-act="mclose">Close</button></div>
     <div class="seg" role="group" aria-label="What do you want to do"><button data-act="nm-mode" data-mode="log" aria-pressed="${nm.mode==='log'}">Log a result</button><button data-act="nm-mode" data-mode="challenge" aria-pressed="${nm.mode==='challenge'}">Challenge</button></div>
-    <div class="field"><label for="nm-opp">Opponent</label><select id="nm-opp"><option value="">Choose a player…</option>${others.map(p=>`<option value="${p.id}" ${String(nm.opp)===String(p.id)?'selected':''}>${esc(p.name)} (${esc(p.login)}) · ${Math.round(p.r)}${accepted.some(c=>c.from===p.id||c.to===p.id)?' · challenge accepted':''}</option>`).join('')}</select></div>
+    <div class="field"><label for="nm-opp">Opponent</label><select id="nm-opp"><option value="">Choose a player…</option>${others.map(p=>`<option value="${p.id}" ${String(nm.opp)===String(p.id)?'selected':''}>${esc(p.name)} (${esc(p.login)}) · ${Math.round(p.r)}${accepted.some(c=>c.from===p.id||c.to===p.id)?' · challenge accepted':''}${isChallenger(p.id)?' · your challenger, '+S.matchupRules.multiplier+'× points':''}</option>`).join('')}</select></div>
     <div class="field"><span class="lbl">Format</span><div class="seg" role="group" aria-label="Format">${[3,5,7].map(b=>`<button data-act="nm-bo" data-bo="${b}" aria-pressed="${nm.bo===b}">Best of ${b}</button>`).join('')}</div></div>
     ${nm.bo===7?BO7_NOTE:''}
     <div id="nm-pred"></div>
@@ -345,7 +380,7 @@ function renderNewMatch(){
     if(nm.mode==='log'&&!state.decided)return;
     send.disabled=true;
     try{
-      if(nm.mode==='log'){await api('/api/matches',{opponentId:o.id,bestOf:nm.bo,sets:state.sets});toast(`Sent to ${o.name} for confirmation.`)}
+      if(nm.mode==='log'){const r=await api('/api/matches',{opponentId:o.id,bestOf:nm.bo,sets:state.sets});toast(r.challenger?`Challenger match sent to ${o.name}. ${S.matchupRules.multiplier}× points once confirmed.`:`Sent to ${o.name} for confirmation.`)}
       else{await api('/api/challenges',{opponentId:o.id,bestOf:nm.bo,message:root.querySelector('#nm-msg').value});toast(`Challenge sent to ${o.name}.`)}
     }finally{send.disabled=false}
     closeModal();nm.opp='';await refresh();
@@ -367,6 +402,9 @@ function viewInbox(main,me){
       inc.map(m=>{const o=P(m.a),mine=setsFor(m,me.id),[a,b]=tally(mine),won=m.w===me.id;
         return line(`<span><b>${esc(o.name)}</b> logged a ${won?'win for you':'loss for you'} <span class="chip ${won?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · best of ${m.bo} · ${ago(m.created)} · ${left(m)}</span>`,
         `<button class="btn btn-good btn-sm" data-act="confirm" data-mid="${m.id}">Confirm</button><button class="btn btn-sm" data-act="dispute" data-mid="${m.id}">Dispute</button>`)}),'Nothing to confirm.'),
+    section('A challenger approaches',`Play these this week for ${S.matchupRules?S.matchupRules.multiplier:3}× season and coalition points.`,
+      openMatchups().map(m=>{const o=muOpp(m);return line(`<span>You vs <b>${esc(o.name)}</b> ${coalChip(o)}${m.kind==='bonus'?' <span class="chip warn">bonus round</span>':''}</span><span class="sub">${Math.round(o.r)} rating · play before ${fmtDate(m.expiresAt)}</span>`,
+        `<button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${o.id}">Log result</button><button class="btn btn-sm" data-act="player" data-pid="${o.id}">Profile</button>`)})),
     section('Approve tournaments','New tournaments only show up for everyone after an admin approves them.',
       approvals().map(t=>line(`<span><b>${esc(t.name)}</b> ${stChip(t)}</span><span class="sub">${fmtDate(t.startsAt)} ${fmtTime(t.startsAt)} · planned by ${esc(P(t.createdBy).name)}</span>`,
         `<button class="btn btn-good btn-sm" data-act="tapprove" data-tid="${t.id}">Approve</button><button class="btn btn-sm" data-act="treject" data-tid="${t.id}">Reject</button><button class="btn btn-sm" data-act="topen" data-tid="${t.id}">View</button>`))),
@@ -607,6 +645,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act-change]');if(!el)return;
+  if(el.dataset.actChange==='muopt')act(async()=>{await api('/api/me/matchups',{enabled:el.checked});await refresh();toast(el.checked?"You'll get a challenger every Monday.":'No more weekly challengers. Your open ones still count.')});
   if(el.dataset.actChange==='tround')act(async()=>{await api(`/api/tournaments/${el.dataset.tid}/format`,{round:Number(el.dataset.r),bestOf:Number(el.value)});await refresh();toast('Round format updated.')});
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});

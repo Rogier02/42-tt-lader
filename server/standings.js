@@ -48,8 +48,10 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
   }
 
   const meta = new Map(); // matchId -> {delta, pts, upset}
-  const rows = db.prepare(`SELECT id, reporter_id, opponent_id, winner_id, best_of, confirmed_at, matchup_id FROM matches
-                           WHERE status = 'confirmed' ORDER BY confirmed_at, id`).all();
+  // Replay in the order the matches were played (logged), not the order they were confirmed, so confirming
+  // results in a different order never changes the outcome. A late confirmation slots into its own place.
+  const rows = db.prepare(`SELECT id, reporter_id, opponent_id, winner_id, best_of, created_at AS played_at, matchup_id FROM matches
+                           WHERE status = 'confirmed' ORDER BY created_at, id`).all();
   for (const m of rows) {
     const A = players.get(m.reporter_id), B = players.get(m.opponent_id);
     const aWon = m.winner_id === A.id;
@@ -60,7 +62,7 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
     const lw = LENGTH_WEIGHT[m.best_of] ?? 1;
     na.r = A.r + lw * (na.r - A.r); nb.r = B.r + lw * (nb.r - B.r);
     const before = { [A.id]: A.r, [B.id]: B.r };
-    const inSeason = inRange(m.confirmed_at);
+    const inSeason = inRange(m.played_at);
     const x = m.matchup_id ? MULT : 1;
     const wPts = inSeason ? (POINTS.win + (upset ? POINTS.upsetBonus : 0)) * x : 0;
     const lPts = inSeason ? POINTS.loss * x : 0;
@@ -69,7 +71,7 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
     const cw = coalitionOf.get(W.id), cl = coalitionOf.get(L.id);
     if (inSeason && cw && cl && cw !== cl) {
       // Challenger matches don't count toward (or get reduced by) the weekly limit per pair.
-      const key = `${Math.min(A.id, B.id)}-${Math.max(A.id, B.id)}-${Math.floor(m.confirmed_at / WEEK)}`;
+      const key = `${Math.min(A.id, B.id)}-${Math.max(A.id, B.id)}-${Math.floor(m.played_at / WEEK)}`;
       const n = m.matchup_id ? 1 : (pairWeek.get(key) || 0) + 1;
       if (!m.matchup_id) pairWeek.set(key, n);
       coal(cw).wins++; coal(cl).losses++;
@@ -81,7 +83,7 @@ function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
     meta.set(m.id, { before, delta: { [A.id]: na.r - A.r, [B.id]: nb.r - B.r }, pts: { [W.id]: wPts, [L.id]: lPts }, upset, coalPts, coalition: coalPts ? cw : null, challenger: !!m.matchup_id });
     Object.assign(A, na); Object.assign(B, nb);
     W.w++; L.l++; W.pts += wPts; L.pts += lPts;
-    A.hist.push({ t: m.confirmed_at, r: A.r }); B.hist.push({ t: m.confirmed_at, r: B.r });
+    A.hist.push({ t: m.played_at, r: A.r }); B.hist.push({ t: m.played_at, r: B.r });
   }
 
   const awards = new Map(); // tournamentId -> [{id, n, why}]

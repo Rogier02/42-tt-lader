@@ -25,8 +25,8 @@ function buildApp(config, db) {
   const invalidate = () => { cache = null; };
   function autoConfirm() {
     const ms = config.autoConfirmHours * 3600e3;
-    const r = db.prepare(`UPDATE matches SET status = 'confirmed', confirmed_at = created_at + ?
-                          WHERE status = 'pending' AND created_at + ? <= ?`).run(ms, ms, now());
+    const r = db.prepare(`UPDATE matches SET status = 'confirmed', confirmed_at = COALESCE(issued_at, created_at) + ?
+                          WHERE status = 'pending' AND COALESCE(issued_at, created_at) + ? <= ?`).run(ms, ms, now());
     if (r.changes) invalidate();
   }
   function standings() {
@@ -156,7 +156,8 @@ function buildApp(config, db) {
     const matches = rows.map((m) => {
       const x = st.meta.get(m.id) || {};
       return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets: JSON.parse(m.sets), w: m.winner_id, status: m.status,
-        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, before: x.before, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
+        t: m.created_at, created: m.created_at, issued: m.issued_at || m.created_at,
+        disputeReason: m.dispute_reason || '', disputedAt: m.disputed_at, edits: m.edits || 0, tourn: m.tournament_id, before: x.before, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
     });
     const setsById = new Map(rows.map((m) => [m.id, JSON.parse(m.sets)]));
 

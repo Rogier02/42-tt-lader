@@ -44,7 +44,7 @@ test('pending results confirm themselves after the deadline', async () => {
   const { db, login, call } = await setup();
   const alice = await login(1);
   const r = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 3, sets: [[11, 7], [11, 6]] });
-  db.prepare('UPDATE matches SET created_at = created_at - ? WHERE id = ?').run(25 * 3600e3, r.body.id);
+  db.prepare('UPDATE matches SET created_at = created_at - ?, issued_at = issued_at - ? WHERE id = ?').run(25 * 3600e3, 25 * 3600e3, r.body.id);
   const st = (await call(alice, 'GET', '/api/state')).body;
   assert.equal(st.matches.find((m) => m.id === r.body.id).status, 'confirmed');
 });
@@ -245,4 +245,37 @@ test('bonus rounds never repeat a pair from the same week', () => {
   const { pair } = require('../server/matchups');
   const ratings = new Map([[1, 1500], [2, 1500]]);
   assert.deepEqual(pair([1, 2], ratings, new Map(), new Set(), Math.random, { forbid: new Set(['1-2']), everyone: false }), []);
+});
+
+test('confirmation order does not change the outcome: ratings follow the order matches were played', async () => {
+  const run = async (order) => {
+    const { db, login, call } = await setup();
+    const alice = await login(1), bob = await login(2), carol = await login(3);
+    const m1 = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 5, sets: [[11, 1], [11, 1], [11, 1]] });
+    db.prepare('UPDATE matches SET created_at = created_at - 1000 WHERE id = ?').run(m1.body.id); // played first
+    const m2 = await call(alice, 'POST', '/api/matches', { opponentId: 3, bestOf: 3, sets: [[1, 11], [1, 11]] });
+    const confirm = { 1: () => call(bob, 'POST', `/api/matches/${m1.body.id}/confirm`, {}), 2: () => call(carol, 'POST', `/api/matches/${m2.body.id}/confirm`, {}) };
+    for (const k of order) await confirm[k]();
+    return (await call(alice, 'GET', '/api/state')).body.players.map((p) => Math.round(p.r * 1000));
+  };
+  assert.deepEqual(await run([1, 2]), await run([2, 1]));
+});
+
+test('disputes: result stays logged, reporter edits and re-sends, opponent can confirm after all', async () => {
+  const { login, call } = await setup();
+  const alice = await login(1), bob = await login(2);
+  const m = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 3, sets: [[11, 7], [11, 7]] });
+  assert.equal((await call(alice, 'POST', `/api/matches/${m.body.id}/dispute`, { reason: 'x' })).code, 403, 'only the opponent disputes');
+  assert.equal((await call(bob, 'POST', `/api/matches/${m.body.id}/dispute`, { reason: 'It was 11-9 in the first' })).code, 200);
+  let mine = (await call(alice, 'GET', '/api/state')).body.matches.find((x) => x.id === m.body.id);
+  assert.equal(mine.status, 'disputed'); assert.equal(mine.disputeReason, 'It was 11-9 in the first');
+  assert.equal((await call(bob, 'POST', `/api/matches/${m.body.id}/edit`, { bestOf: 3, sets: [[11, 9], [11, 7]] })).code, 403, 'only the reporter edits');
+  assert.equal((await call(alice, 'POST', `/api/matches/${m.body.id}/edit`, { bestOf: 3, sets: [[11, 9], [11, 7]] })).code, 200);
+  mine = (await call(alice, 'GET', '/api/state')).body.matches.find((x) => x.id === m.body.id);
+  assert.equal(mine.status, 'pending'); assert.deepEqual(mine.sets, [[11, 9], [11, 7]]); assert.equal(mine.edits, 1);
+  assert.equal(mine.created, mine.t, 'keeps its original played time');
+  // Dispute again, then confirm after all (misclick).
+  await call(bob, 'POST', `/api/matches/${m.body.id}/dispute`, {});
+  assert.equal((await call(bob, 'POST', `/api/matches/${m.body.id}/confirm`, {})).code, 200);
+  assert.equal((await call(alice, 'GET', '/api/state')).body.players.find((p) => p.id === 1).w, 1);
 });

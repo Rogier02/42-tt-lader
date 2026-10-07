@@ -148,6 +148,21 @@ function migrate(db) {
       COMMIT;
     `);
   }
+  if (version < 5) {
+    db.exec(`
+      BEGIN;
+      -- Disputes and edits. created_at stays the moment the match was played and decides its place
+      -- in the rating order; issued_at is when the current version was sent (starts the auto-confirm clock).
+      ALTER TABLE matches ADD COLUMN issued_at INTEGER;
+      ALTER TABLE matches ADD COLUMN dispute_reason TEXT;
+      ALTER TABLE matches ADD COLUMN disputed_at INTEGER;
+      ALTER TABLE matches ADD COLUMN edited_at INTEGER;
+      ALTER TABLE matches ADD COLUMN edits INTEGER NOT NULL DEFAULT 0;
+      UPDATE matches SET issued_at = created_at;
+      PRAGMA user_version = 5;
+      COMMIT;
+    `);
+  }
 }
 
 module.exports = { open };

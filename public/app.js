@@ -75,7 +75,7 @@ const stChip=t=>`<span class="chip st-${t.status}">${STATUS_LABEL[t.status]}</sp
 const incomingChallenges=()=>S.challenges.filter(c=>c.to===S.me&&c.status==='open');
 const myInvites=()=>S.tournaments.filter(t=>t.status==='open'&&myStatus(t)==='invited');
 const approvals=()=>S.isAdmin?S.tournaments.filter(t=>t.status==='proposed'):[];
-const inboxCount=()=>incoming(S.me).length+incomingChallenges().length+myInvites().length+approvals().length+(S.matchups||[]).filter(m=>(m.a===S.me||m.b===S.me)&&m.status==='open').length;
+const inboxCount=()=>incoming(S.me).length+S.matches.filter(m=>m.status==='disputed'&&m.a===S.me).length+incomingChallenges().length+myInvites().length+approvals().length+(S.matchups||[]).filter(m=>(m.a===S.me||m.b===S.me)&&m.status==='open').length;
 
 /* ---------- a challenger approaches ---------- */
 const myMatchups=()=>(S.matchups||[]).filter(m=>m.a===S.me||m.b===S.me);
@@ -108,6 +108,47 @@ function challengerBoard(){
   return `<section class="panel"><div class="head-row"><h3>Challenger matches this week</h3><span class="sub">${played} of ${all.length} played · ${S.matchupRules.multiplier}× points</span></div>
     <div class="ch-board">${all.map(m=>{const a=P(m.a),b=P(m.b),mt=m.matchId&&S.matches.find(x=>x.id===m.matchId),w=m.status==='done'&&mt?mt.w:null;
       return `<div class="ch-pair"><span class="${w===a.id?'w':''}">${coalDot(a)}${esc(a.name)}</span><span class="vs">vs</span><span class="${w===b.id?'w':''}">${coalDot(b)}${esc(b.name)}</span>${m.kind==='bonus'?'<span class="chip warn">bonus</span>':''}${label[m.status]}</div>`}).join('')}</div></section>`;
+}
+
+/* ---------- disputes and edits ---------- */
+function openDispute(mid){
+  const m=S.matches.find(x=>x.id===Number(mid)),o=P(m.a),mine=setsFor(m,S.me),[a,b]=tally(mine);
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dh">
+    <h3 id="dh">Dispute this result?</h3>
+    <p class="lede">${esc(o.name)} logged <b>${a}–${b}</b> for you (${fmtSets(mine)}). If you dispute it, nothing counts until ${esc(first(o))} fixes it or you confirm it after all. It stays in both your inboxes in the meantime.</p>
+    <div class="field" style="max-width:none"><label for="d-reason">What's wrong? (optional, ${esc(first(o))} will see this)</label><input id="d-reason" type="text" maxlength="200" placeholder="e.g. The second set was 11–9, not 11–7"></div>
+    <div class="actions"><button class="btn btn-danger" data-act="dispute-yes" data-mid="${m.id}">Yes, dispute it</button><button class="btn" data-act="mclose">No, go back</button></div></div></div>`;
+  root.querySelector('#d-reason').focus();
+}
+function openEditMatch(mid){
+  const m=S.matches.find(x=>x.id===Number(mid)),o=P(m.b),root=document.getElementById('modal-root');
+  let bo=m.bo;
+  const draw=()=>{
+    root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="eh">
+      <div class="head-row"><h3 id="eh">Edit result vs ${esc(o.name)}</h3><button class="link-btn" data-act="mclose">Close</button></div>
+      ${m.status==='disputed'?`<div class="notice"><b>${esc(first(o))} disputed this.</b> ${m.disputeReason?'“'+esc(m.disputeReason)+'”':'No reason given.'}</div>`:''}
+      <div class="field"><span class="lbl">Format</span><div class="seg" role="group" aria-label="Format">${[3,5,7].map(b=>`<button data-edit-bo="${b}" aria-pressed="${bo===b}">Best of ${b}</button>`).join('')}</div></div>
+      <div id="e-sets"></div><div id="e-status" class="status" aria-live="polite"></div>
+      <p class="note">The match keeps its original date, so it stays in the right place in everyone's rating history. ${esc(first(o))} gets ${S.autoConfirmHours} hours to confirm the new version.</p>
+      <div class="actions"><button id="e-send" class="btn btn-new" disabled>Send again for confirmation</button><button class="btn" data-act="withdraw" data-mid="${m.id}">Withdraw result</button></div></div></div>`;
+    const st=root.querySelector('#e-status'),send=root.querySelector('#e-send');let state={};
+    const read=setEditor(root.querySelector('#e-sets'),bo,'em','You',first(o),s=>{state=s;upd()});
+    if(bo===m.bo)m.sets.forEach((s,i)=>{const ia=root.querySelector('#em-a'+i),ib=root.querySelector('#em-b'+i);if(ia){ia.value=s[0];ib.value=s[1]}});
+    function upd(){st.className='status '+(state.err?'err':state.decided?'ok':'');st.textContent=state.err||(state.decided?(state.wa>state.wb?`You win ${state.wa}–${state.wb}.`:`${first(o)} wins ${state.wb}–${state.wa}.`):'');send.disabled=!state.decided}
+    state=read();upd();
+    root.querySelectorAll('[data-edit-bo]').forEach(b=>b.addEventListener('click',()=>{bo=Number(b.dataset.editBo);draw()}));
+    send.addEventListener('click',()=>act(async()=>{send.disabled=true;try{await api(`/api/matches/${m.id}/edit`,{bestOf:bo,sets:state.sets})}finally{send.disabled=false}
+      closeModal();await refresh();toast(`Sent again to ${o.name} for confirmation.`)}));
+  };
+  draw();
+}
+function openRow(m){
+  const o=P(opp(m,S.me)),s=setsFor(m,S.me),[a,b]=tally(s),won=m.w===S.me;
+  const state=m.status==='disputed'?'<span class="chip warn">Disputed</span>':'<span class="chip">Awaiting confirmation</span>';
+  return `<div class="mrow open"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button> ${state}${m.edits?' <span class="chip">edited</span>':''}</span>
+    <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo} · played ${ago(m.created)}${m.status==='disputed'&&m.disputeReason?` · “${esc(m.disputeReason)}”`:''}</span></div>
+    <div class="right"><button class="btn btn-sm" data-act="nav" data-view="inbox">Open in inbox</button></div></div>`;
 }
 
 /* ---------- shell ---------- */
@@ -219,7 +260,7 @@ function matchesTab(p,isMe){
     </div>
     <div class="actions">${isMe?`<button class="btn btn-new btn-sm" data-act="newmatch">Log a result</button><button class="btn btn-new btn-sm" data-act="newmatch" data-mode="challenge">Challenge someone</button>
       ${pend?`<button class="btn btn-sm" data-act="nav" data-view="inbox">${pend} unconfirmed</button>`:''}`:`<button class="btn btn-new btn-sm" data-act="newmatch" data-pid="${p.id}" data-mode="challenge">Challenge ${esc(first(p))}</button>`}</div>
-    <div class="list">${list.map(m=>matchRow(m,p.id)).join('')||`<p class="empty">No matches ${ui.scope==='season'?'this season ':''}yet.</p>`}</div>`;
+    <div class="list">${isMe?S.matches.filter(m=>['pending','disputed'].includes(m.status)).sort((a,b)=>b.created-a.created).map(openRow).join(''):''}${list.map(m=>matchRow(m,p.id)).join('')||`<p class="empty">No matches ${ui.scope==='season'?'this season ':''}yet.</p>`}</div>`;
 }
 
 /* ---------- ladder and coalitions ---------- */
@@ -398,7 +439,7 @@ function renderNewMatch(){
 function viewInbox(main,me){
   const inc=incoming(me.id).sort((a,b)=>b.t-a.t),out=outgoing(me.id).sort((a,b)=>b.t-a.t);
   const disp=S.matches.filter(m=>m.status==='disputed').sort((a,b)=>b.t-a.t);
-  const left=m=>`confirms itself in ${Math.max(0,Math.ceil((m.created+S.autoConfirmHours*36e5-Date.now())/36e5))}h`;
+  const left=m=>`confirms itself in ${Math.max(0,Math.ceil(((m.issued||m.created)+S.autoConfirmHours*36e5-Date.now())/36e5))}h`;
   const line=(body,actions)=>`<div class="item"><div class="main">${body}</div>${actions?`<div class="actions">${actions}</div>`:''}</div>`;
   const section=(title,lede,items,empty)=>items.length||empty?`<section class="panel"><div><h3>${title}</h3>${lede?`<p class="lede">${lede}</p>`:''}</div><div class="list">${items.join('')||`<p class="empty">${empty}</p>`}</div></section>`:'';
   const ch=S.challenges,quote=c=>c.message?'“'+esc(c.message)+'” · ':'';
@@ -424,9 +465,13 @@ function viewInbox(main,me){
       `<button class="btn btn-good btn-sm" data-act="tjoin" data-tid="${t.id}">Join</button><button class="btn btn-sm" data-act="tleave" data-tid="${t.id}">Decline</button><button class="btn btn-sm" data-act="topen" data-tid="${t.id}">View</button>`))),
     section('Waiting on your opponent','',out.map(m=>{const o=P(m.b),[a,b]=tally(m.sets);
       return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(m.sets)}</span> · sent ${ago(m.created)} · ${left(m)}</span>`,
-      `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}<button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`)})),
-    section('Disputed','',disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id);
-      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip warn">Disputed</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · no rating change</span>`)}))
+      `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}<button class="btn btn-sm" data-act="editmatch" data-mid="${m.id}">Edit</button><button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`)})),
+    section('Disputed','Disputed results stay here until they are fixed, confirmed or withdrawn. They don\'t count for anything in the meantime.',disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id),[a,b]=tally(mine),reporter=m.a===me.id;
+      const why=m.disputeReason?`“${esc(m.disputeReason)}”`:'No reason given';
+      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span> <span class="chip warn">Disputed</span></span>
+        <span class="sub"><span class="score">${fmtSets(mine)}</span> · played ${ago(m.created)} · ${reporter?esc(first(o))+' says: '+why:'you said: '+why}</span>`,
+        reporter?`<button class="btn btn-new btn-sm" data-act="editmatch" data-mid="${m.id}">Edit and send again</button><button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`
+                :`<button class="btn btn-good btn-sm" data-act="confirm" data-mid="${m.id}">Confirm after all</button>${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}`)}))
   ].join('');
 }
 
@@ -613,8 +658,10 @@ document.addEventListener('click',e=>{
     case 'lsort':{const k=el.dataset.k;if(ui.sort===k)ui.dir=ui.dir==='asc'?'desc':'asc';else{ui.sort=k;ui.dir=k==='name'?'asc':'desc'}render();break}
     case 'scope':ui.scope=el.dataset.scope;render();break;
     case 'confirm':act(async()=>{const r=await api(`/api/matches/${el.dataset.mid}/confirm`,{});await refresh();toast(`Confirmed. Your rating ${fmtD(r.delta||0)}, +${r.pts||0} season points.`)});break;
-    case 'dispute':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{});await refresh();toast('Marked as disputed. No ratings changed.')});break;
-    case 'withdraw':act(async()=>{await api(`/api/matches/${el.dataset.mid}/withdraw`,{});await refresh();toast('Result withdrawn.')});break;
+    case 'dispute':openDispute(el.dataset.mid);break;
+    case 'dispute-yes':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{reason:document.getElementById('d-reason').value});closeModal();await refresh();toast('Disputed. Nothing counts until it is fixed or confirmed.')});break;
+    case 'editmatch':openEditMatch(el.dataset.mid);break;
+    case 'withdraw':act(async()=>{await api(`/api/matches/${el.dataset.mid}/withdraw`,{});closeModal();await refresh();toast('Result withdrawn.')});break;
     case 'caccept':act(async()=>{await api(`/api/challenges/${el.dataset.cid}/accept`,{});await refresh();toast('Challenge accepted. Log the result after you play.')});break;
     case 'cdecline':act(async()=>{await api(`/api/challenges/${el.dataset.cid}/decline`,{});await refresh();toast('Challenge declined.')});break;
     case 'ccancel':act(async()=>{await api(`/api/challenges/${el.dataset.cid}/cancel`,{});await refresh();toast('Challenge withdrawn.')});break;

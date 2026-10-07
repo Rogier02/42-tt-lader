@@ -64,6 +64,8 @@ You can also set these optional values:
   - tournaments award the champion 10, the runner-up 6 and each semifinalist 3
   - points count only from `SEASON_START` on, while ratings carry over between seasons
 - **Confirmation:** one player logs the result and the opponent confirms or disputes it. Results nobody responds to confirm themselves after `AUTO_CONFIRM_HOURS` (24 by default).
+- **Disputes:** disputing asks for confirmation first and takes an optional reason. A disputed result stays logged and shows as disputed for both players, but doesn't count. The reporter can edit it and send it again, or withdraw it, and the opponent can still confirm it after all. The reporter can also edit a result while it's waiting for confirmation. An edited result restarts the auto-confirm clock.
+- **Order:** ratings are replayed in the order matches were played (logged), not the order they were confirmed. Confirming results in a different order always gives the same outcome, and a late confirmation or an edited result slots into its original place.
 - **Scores:** sets follow ITTF rules: play to 11, win by 2.
 - **Matches:** best of 3, 5 or 7. Choosing best of 7 shows a reminder that the school has one table.
 - **Challenges:** you challenge a player and they accept or decline. Logging a result against them closes the challenge.

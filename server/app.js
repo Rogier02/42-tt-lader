@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const Fastify = require('fastify');
 const { compute, COALITION_POINTS } = require('./standings');
 const { assignMissing } = require('./coalitions');
+const { ensureSeason, currentSeason, seasonRoutes } = require('./routes/seasons');
 
 const SESSION_DAYS = 30;
 const FT = 'https://api.intra.42.fr';
@@ -12,6 +13,7 @@ function buildApp(config, db) {
   app.register(require('@fastify/cookie'), { secret: config.cookieSecret });
   app.register(require('@fastify/static'), { root: path.join(__dirname, '..', 'public') });
 
+  ensureSeason(db, config);
   const secure = config.baseUrl.startsWith('https://');
   const now = () => Date.now();
   const tx = (fn) => { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
@@ -28,7 +30,7 @@ function buildApp(config, db) {
   }
   function standings() {
     autoConfirm();
-    if (!cache) cache = compute(db, config.seasonStart, config.coalitions);
+    if (!cache) cache = compute(db, currentSeason(db).starts_at, config.coalitions);
     return cache;
   }
   const timer = setInterval(autoConfirm, 5 * 60e3);
@@ -141,7 +143,7 @@ function buildApp(config, db) {
     return { ok: true };
   });
 
-  app.get('/api/config', async () => ({ authMode: config.authMode, season: config.seasonName }));
+  app.get('/api/config', async () => ({ authMode: config.authMode }));
 
   // ---------- state: everything the page needs in one call ----------
   app.get('/api/state', { preHandler: auth }, async (req) => {
@@ -179,13 +181,18 @@ function buildApp(config, db) {
     const coal = new Map(db.prepare('SELECT id, coalition FROM users').all().map((u) => [u.id, u.coalition]));
     const players = [...st.players.values()].map((p) => ({ ...p, coalition: coal.get(p.id) || null }));
 
-    return { me: me.id, isAdmin, authMode: config.authMode, season: config.seasonName, seasonStart: config.seasonStart,
+    const cur = currentSeason(db);
+    const seasons = db.prepare('SELECT * FROM seasons WHERE ends_at IS NOT NULL ORDER BY starts_at DESC').all()
+      .map((s) => ({ id: s.id, name: s.name, startsAt: s.starts_at, endsAt: s.ends_at, prize: s.prize, results: JSON.parse(s.results || 'null') }));
+    return { me: me.id, isAdmin, authMode: config.authMode, season: cur.name, seasonStart: cur.starts_at,
+      currentSeason: { id: cur.id, name: cur.name, startsAt: cur.starts_at, plannedEnd: cur.planned_end, prize: cur.prize }, seasons,
       autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS,
       players, matches, tournaments, challenges };
   });
 
   require('./routes/matches')(app, ctx);
   require('./routes/tournaments')(app, ctx);
+  seasonRoutes(app, ctx);
   return app;
 }
 

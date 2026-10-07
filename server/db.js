@@ -109,6 +109,24 @@ function migrate(db) {
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; }
   }
+  if (version < 3) {
+    db.exec(`
+      BEGIN;
+      -- One row per season. The current season has ends_at = NULL.
+      -- When a season ends, its final standings are frozen in results (JSON).
+      CREATE TABLE seasons (
+        id          INTEGER PRIMARY KEY,
+        name        TEXT NOT NULL,
+        starts_at   INTEGER NOT NULL,
+        ends_at     INTEGER,
+        planned_end INTEGER,
+        prize       TEXT NOT NULL DEFAULT '',
+        results     TEXT
+      );
+      PRAGMA user_version = 3;
+      COMMIT;
+    `);
+  }
 }
 
 module.exports = { open };

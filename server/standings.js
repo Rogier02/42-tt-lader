@@ -14,6 +14,7 @@ const COALITION_POINTS = {
   bigUpset: 9, bigUpsetMargin: 100,   // opponent rated 100+ higher
   fullPerPairPerWeek: 3, afterCap: 1,
   champion: 10, runnerUp: 6, semifinal: 3,
+  tournamentPlayer: 1,                // every player in a finished tournament, on top of any placement points
 };
 function coalitionWinPoints(ratingGap, nthThisWeek) {
   const C = COALITION_POINTS;
@@ -24,7 +25,9 @@ function coalitionWinPoints(ratingGap, nthThisWeek) {
 }
 const WEEK = 7 * 864e5;
 
-function compute(db, seasonStart, coalitionNames = []) {
+// Season points and the coalition race count from seasonStart up to seasonEnd (null = still running).
+function compute(db, seasonStart, coalitionNames = [], seasonEnd = null) {
+  const inRange = (t) => t >= seasonStart && (seasonEnd == null || t < seasonEnd);
   const players = new Map();
   const coalitionOf = new Map(db.prepare('SELECT id, coalition FROM users').all().map((u) => [u.id, u.coalition]));
   const coalitions = new Map();
@@ -50,7 +53,7 @@ function compute(db, seasonStart, coalitionNames = []) {
     const gap = L.r - W.r; // how much higher the loser was rated before the match
     const upset = W.r < L.r - POINTS.upsetMargin;
     const na = rules.glicko(A, B, aWon ? 1 : 0), nb = rules.glicko(B, A, aWon ? 0 : 1);
-    const inSeason = m.confirmed_at >= seasonStart;
+    const inSeason = inRange(m.confirmed_at);
     const wPts = inSeason ? POINTS.win + (upset ? POINTS.upsetBonus : 0) : 0;
     const lPts = inSeason ? POINTS.loss : 0;
     // Coalition race
@@ -73,13 +76,14 @@ function compute(db, seasonStart, coalitionNames = []) {
   }
 
   const awards = new Map(); // tournamentId -> [{id, n, why}]
-  for (const t of db.prepare('SELECT id, bracket, finished_at FROM tournaments WHERE finished_at IS NOT NULL').all()) {
-    const rounds = JSON.parse(t.bracket), list = [];
+  for (const t of db.prepare('SELECT id, bracket, seeds, finished_at FROM tournaments WHERE finished_at IS NOT NULL').all()) {
+    const rounds = JSON.parse(t.bracket), list = [], counts = inRange(t.finished_at);
+    if (counts) for (const id of JSON.parse(t.seeds)) scoreCoalition(id, COALITION_POINTS.tournamentPlayer);
     const coalN = { Champion: COALITION_POINTS.champion, 'Runner-up': COALITION_POINTS.runnerUp, Semifinalist: COALITION_POINTS.semifinal };
     const give = (id, n, why) => {
       if (id == null) return;
       list.push({ id, n, why });
-      if (t.finished_at >= seasonStart) { players.get(id).pts += n; scoreCoalition(id, coalN[why]); }
+      if (counts) { players.get(id).pts += n; scoreCoalition(id, coalN[why]); }
     };
     const final = rounds[rounds.length - 1][0];
     give(final.w, POINTS.champion, 'Champion');

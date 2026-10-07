@@ -278,6 +278,27 @@ details>summary{cursor:pointer;font-weight:600;color:var(--table-ink)}
 table.h2h{min-width:420px}
 td.muted{color:var(--muted)}
 .rules{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+/* ---- v4: seasons ---- */
+.prize{border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.prize b{font-family:var(--f-display);font-size:1.3rem;letter-spacing:.02em}
+.admin-box{border-top:1px solid var(--line);padding-top:14px}
+.seasons{display:flex;flex-direction:column}
+details.season{border-bottom:1px solid var(--line)}
+details.season:last-child{border-bottom:0}
+details.season>summary{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:center;padding:12px 0;color:var(--ink);font-weight:400}
+details.season>summary::-webkit-details-marker{display:none}
+details.season>summary:hover .season-name b{text-decoration:underline;text-underline-offset:3px}
+.season-name{display:flex;flex-direction:column;min-width:0}
+.season-name b{font-family:var(--f-display);font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em}
+.season-win{display:flex;gap:10px;align-items:center}
+.season-mvp{grid-column:1/-1;font-size:.85rem}
+.season-body{display:flex;flex-direction:column;gap:12px;padding:4px 0 16px}
+.season-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
+.season-coal{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--sunk);display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+.season-coal::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+.season-coal .race-name b{font-size:1.15rem}
+.tops{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:2px;font-size:.92rem}
+.tops li span{float:right;color:var(--muted)}
 </style>
 </head>
 <body>

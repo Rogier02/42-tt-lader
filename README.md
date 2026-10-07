@@ -15,6 +15,7 @@ Then open http://localhost:3000.
 
 Without 42 credentials the app runs in **dev mode**. Sign-in is simulated, and an empty database is filled with demo data:
 - 14 players spread over the three coalitions
+- two finished seasons with frozen results, and a current season with a prize
 - about 80 matches
 - finished, live, open and awaiting-approval tournaments
 - open challenges
@@ -76,7 +77,8 @@ You can also set these optional values:
   - A win earns your coalition 3 points. Beating someone rated 50+ higher earns 5, and a true upset against someone rated 100+ higher earns 9.
   - A loss costs nothing, but the other coalition scores.
   - Your first 3 matches against the same player each week score in full. After that, each win still earns 1 point, so variety pays more but playing the same person still counts.
-  - Tournament placements count too: 10 for the champion, 6 for the runner-up, 3 for each semifinalist.
+  - Tournaments: every player earns +1 for their coalition for taking part. On top of that, placements score 10 for the champion, 6 for the runner-up and 3 for each semifinalist.
+- **Seasons:** an admin ends the current season from Ladder → Coalitions. That freezes the final standings (winning coalition, its top scorers and the MVP) and starts the next season right away. Season points and the coalition race reset; ratings carry over. Admins can also set a season name, a planned end date and a prize, which players see above the race. Past seasons are listed in the season history.
   - The numbers are in `COALITION_POINTS` in `server/standings.js`.
   - Coalition team matches (2v2, 3v3) are a planned next step.
 

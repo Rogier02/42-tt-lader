@@ -209,17 +209,56 @@ function viewLadder(main,me){
   </section>`;
 }
 function viewCoalitions(main,me,seg){
-  const cs=S.coalitions||[],max=Math.max(1,...cs.map(c=>c.points)),R=S.coalitionRules;
+  const cs=S.coalitions||[],max=Math.max(1,...cs.map(c=>c.points)),R=S.coalitionRules,cur=S.currentSeason;
   const top=c=>Object.entries(c.contributors).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,n])=>`<button class="link-btn" style="opacity:1" data-act="player" data-pid="${id}">${esc(first(P(id)))}</button> ${n}`).join(' · ');
+  const daysLeft=cur.plannedEnd?Math.ceil((cur.plannedEnd-Date.now())/DAY):null;
+  const ends=cur.plannedEnd?` · ends ${fmtDate(cur.plannedEnd)}${daysLeft>0?` (${daysLeft} day${daysLeft===1?'':'s'} left)`:''}`:'';
+  const dateVal=t=>t?new Date(t-new Date(t).getTimezoneOffset()*6e4).toISOString().slice(0,10):'';
+  const admin=S.isAdmin?`<details class="admin-box"><summary>Season settings (admin)</summary>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="field"><label for="ss-name">Season name</label><input id="ss-name" type="text" maxlength="40" value="${esc(cur.name)}"></div>
+        <div class="field"><label for="ss-end">Planned end</label><input id="ss-end" type="date" value="${dateVal(cur.plannedEnd)}"></div>
+      </div>
+      <div class="field" style="max-width:720px;margin-top:12px"><label for="ss-prize">Prize for the winning coalition</label><input id="ss-prize" type="text" maxlength="300" value="${esc(cur.prize)}" placeholder="e.g. New rubbers for the top three scorers"></div>
+      <div class="actions" style="margin-top:12px"><button class="btn btn-sm" data-act="ssave">Save season</button></div>
+      <h3 style="margin-top:20px">End this season</h3>
+      <p class="note">Freezes the final standings and the winner, then starts the next season right away. Season points reset; ratings carry over. This can't be undone.</p>
+      <div class="form-grid" style="margin-top:8px">
+        <div class="field"><label for="sn-name">Next season</label><input id="sn-name" type="text" maxlength="40" placeholder="e.g. Winter 2027"></div>
+        <div class="field"><label for="sn-end">Its planned end (optional)</label><input id="sn-end" type="date"></div>
+      </div>
+      <div class="field" style="max-width:720px;margin-top:12px"><label for="sn-prize">Its prize (optional)</label><input id="sn-prize" type="text" maxlength="300"></div>
+      <div class="actions" style="margin-top:12px"><button class="btn btn-new btn-sm" data-act="send">End ${esc(cur.name)} and start the next season</button></div>
+    </details>`:'';
+  const hist=(S.seasons||[]).map(s=>{
+    const r=s.results||{coalitions:[]},w=r.coalitions.find(c=>c.name===r.winner);
+    return `<details class="season"><summary>
+        <span class="season-name"><b>${esc(s.name)}</b><span class="sub">${fmtDate(s.startsAt)} – ${fmtDate(s.endsAt)}</span></span>
+        <span class="season-win">${w?`<span class="coal" style="--c:${esc(colorOf(w.name))}"><i></i>${esc(w.name)}</span><span class="num">${w.points} pts</span>`:'<span class="sub">No winner</span>'}</span>
+        ${r.mvp?`<span class="sub season-mvp">MVP ${esc(r.mvp.name)} · ${r.mvp.pts} pts for ${esc(r.mvp.coalition)}</span>`:''}
+      </summary>
+      <div class="season-body">
+        ${s.prize?`<p class="sub">Prize: ${esc(s.prize)}</p>`:''}
+        <div class="season-grid">${r.coalitions.map((c,i)=>`<div class="season-coal" style="--c:${esc(colorOf(c.name))}">
+          <div class="race-name"><span class="rank" style="width:auto">${i+1}</span><b>${esc(c.name)}</b><span class="race-pts num">${c.points} pts</span></div>
+          <span class="sub">${c.wins}–${c.losses} against other coalitions · ${c.members} players</span>
+          <ol class="tops">${c.top.map(p=>`<li><button class="link-btn" style="opacity:1" data-act="player" data-pid="${p.id}">${esc(p.name)}</button><span class="num">${p.pts}</span></li>`).join('')||'<li class="sub">No points scored</li>'}</ol>
+        </div>`).join('')}</div>
+        ${r.topPlayers&&r.topPlayers.length?`<p class="sub">Most season points: ${r.topPlayers.map(p=>`${esc(p.name)} (${p.pts})`).join(', ')}</p>`:''}
+      </div></details>`}).join('');
   main.innerHTML=`<section class="panel">
-    <div class="head-row"><div><h2>Coalition race</h2><p class="lede">Vela, Cetus and Pyxis compete all season. Win against another coalition and your coalition scores.</p></div>${seg}</div>
+    <div class="head-row"><div><h2>Coalition race</h2><p class="lede"><b>${esc(cur.name)}</b> · started ${fmtDate(cur.startsAt)}${ends}. Win against another coalition and your coalition scores.</p></div>${seg}</div>
+    ${cur.prize?`<div class="prize"><span class="eyebrow">Season prize</span><b>${esc(cur.prize)}</b></div>`:''}
     <div class="race">${cs.map((c,i)=>`<div class="race-row ${c.name===me.coalition?'mine':''}" style="--c:${esc(colorOf(c.name))}">
       <span class="rank">${i+1}</span>
       <div class="race-main"><div class="race-name"><b>${esc(c.name)}</b>${c.name===me.coalition?'<span class="chip">your coalition</span>':''}<span class="race-pts num">${c.points} pts</span></div>
         <div class="race-bar" role="img" aria-label="${esc(c.name)}: ${c.points} points"><i style="width:${(c.points/max*100).toFixed(1)}%"></i></div>
         <span class="sub">${c.wins}–${c.losses} against other coalitions · ${c.members} players${Object.keys(c.contributors).length?' · top scorers: '+top(c):''}</span></div>
     </div>`).join('')}</div>
+    ${admin}
   </section>
+  <section class="panel"><h3>Season history</h3>
+    <div class="seasons">${hist||'<p class="empty">No finished seasons yet. When an admin ends this season, its winner shows up here.</p>'}</div></section>
   <section class="panel"><h3>Head to head this season</h3>
     <div class="tbl-wrap"><table class="h2h"><thead><tr><th></th>${cs.map(c=>`<th class="r"><span class="coal-dot" style="--c:${esc(colorOf(c.name))}"></span>vs ${esc(c.name)}</th>`).join('')}</tr></thead>
     <tbody>${cs.map(a=>`<tr><td><span class="coal-dot" style="--c:${esc(colorOf(a.name))}"></span><b>${esc(a.name)}</b></td>${cs.map(b=>a.name===b.name?'<td class="r muted">–</td>':`<td class="r num">${(a.vs[b.name]||{w:0}).w}–${(a.vs[b.name]||{l:0}).l}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
@@ -231,8 +270,8 @@ function viewCoalitions(main,me,seg){
       <li>Losing costs your coalition nothing, but the other coalition scores.</li>
       <li>Matches within your own coalition don't count.</li>
       <li>Your first ${R.fullPerPairPerWeek} matches against the same player each week score in full. After that, each win still earns <b>${R.afterCap}</b> point, so playing different people pays more.</li>
-      <li>Tournaments: the champion's coalition gets <b>${R.champion}</b>, the runner-up's <b>${R.runnerUp}</b>, each semifinalist's <b>${R.semifinal}</b>.</li>
-      <li>Points reset each season.</li>
+      <li>Tournaments: every player earns <b>+${R.tournamentPlayer}</b> for their coalition for taking part. On top of that, the champion's coalition gets <b>${R.champion}</b>, the runner-up's <b>${R.runnerUp}</b>, each semifinalist's <b>${R.semifinal}</b>.</li>
+      <li>The coalition with the most points when the season ends wins it. Points reset each season.</li>
     </ul></section>`;
 }
 
@@ -518,6 +557,13 @@ document.addEventListener('click',e=>{
     case 'player':ui.pid=Number(el.dataset.pid);ui.ptab='profile';go(ui.pid===S.me?'home':'player');break;
     case 'ptab':ui.ptab=el.dataset.t;render();break;
     case 'lview':ui.lview=el.dataset.v;render();break;
+    case 'ssave':act(async()=>{const v=id=>document.getElementById(id).value.trim(),end=v('ss-end');
+      await api('/api/seasons/current',{name:v('ss-name'),prize:v('ss-prize'),plannedEnd:end?new Date(end+'T23:59').getTime():null});await refresh();toast('Season saved.')});break;
+    case 'send':if(el.dataset.sure){act(async()=>{const v=id=>document.getElementById(id).value.trim(),end=v('sn-end');
+        const r=await api('/api/seasons/end',{nextName:v('sn-name'),nextPrize:v('sn-prize'),nextPlannedEnd:end?new Date(end+'T23:59').getTime():null});
+        await refresh();toast(r.winner?`Season over. ${r.winner} wins!`:'Season over. No coalition scored.')})}
+      else{if(!document.getElementById('sn-name').value.trim()){toast('Name the next season first.');break}
+        el.dataset.sure='1';const t=el.textContent;el.textContent='Click again to end the season';setTimeout(()=>{if(el.isConnected){delete el.dataset.sure;el.textContent=t}},4000)}break;
     case 'newmatch':openNewMatch({opp:el.dataset.pid||'',mode:el.dataset.mode||'log',bo:el.dataset.bo?Number(el.dataset.bo):undefined});break;
     case 'nm-mode':nm.mode=el.dataset.mode;nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
     case 'nm-bo':nm.bo=Number(el.dataset.bo);nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;

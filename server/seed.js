@@ -1,5 +1,7 @@
 // Demo data for dev mode only. Never runs when 42 sign-in is configured.
 const rules = require('./rules');
+const { compute } = require('./standings');
+const { snapshot } = require('./routes/seasons');
 
 const NAMES = [['Sanne de Vries','sdevries'],['Mehmet Yilmaz','myilmaz'],['Lotte Bakker','lbakker'],['Daan Visser','dvisser'],
   ['Priya Raman','praman'],['Jonas Kuipers','jkuipers'],['Fatima El Amrani','felamran'],['Tom Hendriks','thendrik'],
@@ -31,7 +33,7 @@ function seedDemo(db, config = {}) {
   const admins = config.adminLogins?.length ? config.adminLogins : [NAMES[0][1]];
   const ids = NAMES.map(([name, login], i) => {
     const c = coalitions[i % coalitions.length];
-    const id = Number(insUser.run(login, name, c, COALITION_COLORS[c] || null, admins.includes(login) ? 1 : 0, now - 60 * DAY).lastInsertRowid);
+    const id = Number(insUser.run(login, name, c, COALITION_COLORS[c] || null, admins.includes(login) ? 1 : 0, now - 160 * DAY).lastInsertRowid);
     strength.set(id, R());
     return id;
   });
@@ -40,6 +42,16 @@ function seedDemo(db, config = {}) {
     return Number(insMatch.run(a, b, bo, JSON.stringify(sets), x > y ? a : b, status, t, status === 'confirmed' ? t : null, tid).lastInsertRowid);
   };
   const pick = () => ids[Math.floor(R() * ids.length)];
+
+  // Two finished seasons before this one, so the season history has something to show.
+  const SEASONS = [['Spring 2026', -150, -96], ['Summer 2026', -96, -36]];
+  for (const [, from, to] of SEASONS) {
+    for (let i = 0; i < 50; i++) {
+      const a = pick(); let b; do { b = pick(); } while (b === a);
+      const bo = R() < 0.6 ? 5 : 3;
+      add(a, b, bo, simSets(strength.get(a), strength.get(b), bo, R), 'confirmed', Math.round(now + (from + 1 + (i * (to - from - 2)) / 50) * DAY));
+    }
+  }
 
   // Friendly matches over the last five weeks.
   const N = 72;
@@ -81,6 +93,7 @@ function seedDemo(db, config = {}) {
   }
 
   const at = (days, hour, min = 0) => { const d = new Date(now + days * DAY); d.setHours(hour, min, 0, 0); return d.getTime(); };
+  tournament({ name: 'Summer Slam', description: 'Last knockout before the break.', startsAt: at(-60, 18), status: 'done', by: ids[0], stages: STANDARD, joined: ids.slice(4, 12) });
   tournament({ name: 'September Opener', description: 'First knockout of the season.', startsAt: at(-29, 18), status: 'done', by: ids[0], stages: QUICK, joined: ids.slice(0, 8) });
   tournament({ name: 'Lunch Break Cup #1', startsAt: at(-20, 12, 30), status: 'done', by: ids[4], stages: QUICK, joined: ids.slice(5, 10) });
   tournament({ name: 'Coalition Night', description: 'Two players from every coalition.', startsAt: at(-13, 19), status: 'done', by: ids[0], stages: STANDARD, joined: [ids[0], ids[1], ids[2], ids[3], ids[4], ids[5]] });
@@ -93,6 +106,16 @@ function seedDemo(db, config = {}) {
   tournament({ name: 'Best of 7 Masters', description: 'Long matches for people who want them. Starts early so the table is free by lunch.', startsAt: at(16, 9), status: 'proposed', by: ids[7], stages: { early: 5, qf: 5, sf: 7, final: 7 },
     max: 8, joined: [ids[7]] });
   tournament({ name: 'Halloween Smash', description: 'Costumes encouraged, paddles mandatory.', startsAt: at(24, 17), status: 'open', by: ids[9], stages: STANDARD, max: 16, joined: [ids[9], ids[11], ids[13]] });
+
+  // Seasons: freeze the two past ones, then open the current one.
+  const names = config.coalitions?.length ? config.coalitions : ['Vela', 'Cetus', 'Pyxis'];
+  const insS = db.prepare('INSERT INTO seasons (name, starts_at, ends_at, planned_end, prize, results) VALUES (?, ?, ?, ?, ?, ?)');
+  const prizes = ['Team photo on the wall of fame', 'New rubbers for the top three scorers of the winning coalition'];
+  SEASONS.forEach(([name, from, to], i) => {
+    const start = now + from * DAY, end = now + to * DAY;
+    insS.run(name, start, end, end, prizes[i], JSON.stringify(snapshot(compute(db, start, names, end))));
+  });
+  insS.run(config.seasonName || 'Autumn 2026', now - 36 * DAY, null, now + 54 * DAY, 'Winning coalition picks the music at the next 42 party', null);
 
   // Every player has one result waiting for them and one waiting on someone else.
   ids.forEach((id, i) => add(ids[(i + 1) % ids.length], id, 5, simSets(0.5, 0.5, 5, R), 'pending', now - (2 + i) * HOUR));

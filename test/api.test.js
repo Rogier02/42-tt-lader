@@ -153,3 +153,45 @@ test('coalition race: only cross-coalition wins score, with a weekly cap per pai
   assert.deepEqual(vela.vs.Cetus, { w: 4, l: 0 });
   assert.equal(vela.contributors[1], 10);
 });
+
+test('ending a season freezes the winner and resets season points', async () => {
+  const { db, login, call } = await setup();
+  db.prepare(`UPDATE users SET coalition = CASE id WHEN 1 THEN 'Vela' WHEN 2 THEN 'Cetus' ELSE 'Pyxis' END, is_admin = (id = 1)`).run();
+  const alice = await login(1), bob = await login(2);
+  const m = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 3, sets: [[11, 1], [11, 2]] });
+  await call(bob, 'POST', `/api/matches/${m.body.id}/confirm`, {});
+  assert.equal((await call(bob, 'POST', '/api/seasons/end', { nextName: 'Next' })).code, 403, 'admins only');
+  assert.equal((await call(alice, 'POST', '/api/seasons/current', { prize: 'Paddles' })).code, 200);
+  const end = await call(alice, 'POST', '/api/seasons/end', { nextName: 'Winter 2027' });
+  assert.equal(end.body.winner, 'Vela');
+  const st = (await call(alice, 'GET', '/api/state')).body;
+  assert.equal(st.season, 'Winter 2027');
+  assert.equal(st.seasons[0].prize, 'Paddles');
+  assert.equal(st.seasons[0].results.winner, 'Vela');
+  assert.equal(st.seasons[0].results.mvp.id, 1);
+  assert.equal(st.players.find((p) => p.id === 1).pts, 0, 'season points reset');
+  assert.ok(st.players.find((p) => p.id === 1).r > 1500, 'rating carries over');
+  assert.equal(st.coalitions.find((c) => c.name === 'Vela').points, 0);
+});
+
+test('tournament players each earn +1 for their coalition, plus placement points', async () => {
+  const { db, login, call } = await setup();
+  db.prepare(`UPDATE users SET coalition = CASE id WHEN 1 THEN 'Vela' WHEN 2 THEN 'Cetus' ELSE 'Pyxis' END, is_admin = (id = 1)`).run();
+  const alice = await login(1);
+  const t = await call(alice, 'POST', '/api/tournaments', { name: 'Cup', startsAt: Date.now() + 864e5, stages: { early: 3, qf: 3, sf: 3, final: 3 }, playing: true, inviteIds: [] });
+  for (const id of [2, 3]) await call(await login(id), 'POST', `/api/tournaments/${t.body.id}/join`, {});
+  await call(alice, 'POST', `/api/tournaments/${t.body.id}/start`, {});
+  // Make the matches same-coalition-free scoring simple: only placement and participation points matter here.
+  let tour = (await call(alice, 'GET', '/api/state')).body.tournaments[0];
+  const semi = tour.rounds[0].findIndex((m) => !m.bye);
+  await call(alice, 'POST', `/api/tournaments/${t.body.id}/results`, { round: 0, slot: semi, sets: [[11, 3], [11, 3]] });
+  await call(alice, 'POST', `/api/tournaments/${t.body.id}/results`, { round: 1, slot: 0, sets: [[11, 3], [11, 3]] });
+  const st = (await call(alice, 'GET', '/api/state')).body;
+  tour = st.tournaments[0];
+  const champ = st.players.find((p) => p.id === tour.champion).coalition;
+  const c = st.coalitions.find((x) => x.name === champ);
+  const matchPts = st.matches.filter((m) => m.tourn === tour.id && m.coalition === champ).reduce((s, m) => s + m.coalPts, 0);
+  assert.equal(c.points, matchPts + 1 + 10, 'champion: match points + 1 for playing + 10 for winning');
+  const total = st.coalitions.reduce((s, x) => s + x.points, 0) - st.matches.reduce((s, m) => s + m.coalPts, 0);
+  assert.equal(total, 3 + 10 + 6 + 3, '3 players x 1, champion 10, runner-up 6, beaten semifinalist 3');
+});

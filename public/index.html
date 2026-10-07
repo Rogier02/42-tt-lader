@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>42 Table Tennis Ladder</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%23e0601a%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%}
+[hidden]{display:none!important}
+/* Layout: table-blue top bar with a white edge line (like the table's side line), one centred working column below */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --sunk:#f4f6f9; --ink:#152033; --muted:#5a6678; --line:#d7dde6;
+  --table:#1d4b86; --on-table:#f4f7fb; --ball:#e0601a; --win:#1d7f47; --loss:#b83a33; --warn:#94650f;
+  --win-bg:#e3f2e9; --loss-bg:#f8e5e3; --warn-bg:#f8efdc; --focus:#e0601a;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141e; --surface:#161f2d; --sunk:#111925; --ink:#e5eaf1; --muted:#97a3b5; --line:#283447;
+  --table:#183c6b; --on-table:#eef3fa; --ball:#ff8a3d; --win:#55c486; --loss:#f0716a; --warn:#e2ad4f;
+  --win-bg:#16301f; --loss-bg:#3a1c1c; --warn-bg:#382c13; --focus:#ff8a3d; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e141e; --surface:#161f2d; --sunk:#111925; --ink:#e5eaf1; --muted:#97a3b5; --line:#283447;
+  --table:#183c6b; --on-table:#eef3fa; --ball:#ff8a3d; --win:#55c486; --loss:#f0716a; --warn:#e2ad4f;
+  --win-bg:#16301f; --loss-bg:#3a1c1c; --warn-bg:#382c13; --focus:#ff8a3d; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+.top{background:var(--table);color:var(--on-table);border-bottom:4px solid var(--on-table);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.top-in{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:12px 0;display:flex;flex-direction:column;gap:8px}
+.brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--f-display);font-weight:700;font-size:1.5rem;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin:0}
+.ball{width:14px;height:14px;border-radius:50%;background:var(--ball);display:inline-block;box-shadow:inset -3px -3px 0 rgba(0,0,0,.18)}
+.who{display:flex;align-items:center;gap:10px;font-size:.9rem}
+.who b{font-weight:600}
+.link-btn{background:none;border:0;padding:4px 2px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:inherit;opacity:.85}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tab{background:none;border:0;color:var(--on-table);opacity:.75;padding:10px 12px 12px;font-family:var(--f-display);font-weight:600;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tab:hover{opacity:1}
+.tab[aria-current="page"]{opacity:1;border-bottom-color:var(--ball)}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--ball);color:#fff;font-family:var(--f-body);font-size:.75rem;font-weight:600;margin-left:6px;letter-spacing:0}
+
+.demo-note{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:10px;font-size:.85rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.demo-note .link-btn{color:var(--muted)}
+main{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:4px 64px;display:flex;flex-direction:column;gap:20px}
+
+h2{font-family:var(--f-display);font-weight:700;font-size:1.6rem;letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.2rem;letter-spacing:.03em;text-transform:uppercase;margin:0}
+.lede{color:var(--muted);margin:0;max-width:62ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.head-row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+
+.stats{display:flex;flex-wrap:wrap;gap:8px 28px}
+.stat{display:flex;flex-direction:column}
+.stat .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat .v{font-family:var(--f-num);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:.8rem;color:var(--muted)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:6px 14px;cursor:pointer;font-size:.9rem}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--table);color:var(--on-table)}
+
+.tbl-wrap{overflow-x:auto;margin-inline:-20px;padding-inline:20px}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+th.r,td.r{text-align:right}
+tr.me td{background:var(--sunk)}
+tr.me td:first-child{box-shadow:inset 3px 0 0 var(--ball)}
+.rank{font-family:var(--f-display);font-weight:700;font-size:1.25rem;width:44px;color:var(--muted)}
+tr:nth-child(-n+3) .rank{color:var(--ink)}
+.pname{background:none;border:0;padding:0;cursor:pointer;text-align:left;display:flex;flex-direction:column}
+.pname b{font-weight:600}
+.pname span{font-size:.8rem;color:var(--muted);font-family:var(--f-num)}
+.pname:hover b{text-decoration:underline;text-underline-offset:3px}
+.chip{display:inline-block;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:2px;font-family:var(--f-body)}
+.chip.win{background:var(--win-bg);color:var(--win);border-color:transparent}
+.chip.loss{background:var(--loss-bg);color:var(--loss);border-color:transparent}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.form{display:flex;gap:4px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dot.w{background:var(--win)} .dot.l{background:var(--loss)}
+
+.field{display:flex;flex-direction:column;gap:6px;max-width:360px}
+label,.lbl{font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+select,input[type=text]{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+.sets{display:flex;flex-direction:column;gap:8px;max-width:360px}
+.set-row{display:grid;grid-template-columns:64px 1fr 1fr;gap:8px;align-items:center}
+.set-row .sn{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.set-row input{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;text-align:center;font-family:var(--f-num);font-size:1.1rem}
+.set-row input.bad{border-color:var(--loss)}
+.set-row input:disabled{opacity:.4}
+.set-head{display:grid;grid-template-columns:64px 1fr 1fr;gap:8px;font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:center;max-width:360px}
+.set-head span:first-child{text-align:left}
+.status{min-height:1.5em;font-size:.95rem}
+.status.err{color:var(--loss)} .status.ok{color:var(--win)}
+.pred{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px 24px;font-size:.92rem;max-width:560px}
+.pred b{font-family:var(--f-num);font-weight:500}
+.up{color:var(--win)} .down{color:var(--loss)}
+
+.btn{border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600;border:1px solid var(--line);background:var(--surface)}
+.btn-primary{background:var(--table);color:var(--on-table);border-color:var(--table)}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-good{background:var(--win);border-color:var(--win);color:#fff}
+.btn-sm{padding:5px 10px;font-size:.88rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.list{display:flex;flex-direction:column}
+.item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.item:last-child{border-bottom:0}
+.item .main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.item .sub{font-size:.85rem;color:var(--muted)}
+.score{font-family:var(--f-num);font-size:.9rem;white-space:nowrap}
+.empty{color:var(--muted);padding:8px 0;margin:0}
+
+.chart-wrap{overflow-x:auto}
+.chart{width:100%;min-width:420px;height:auto;display:block}
+
+.bracket{display:flex;gap:28px;overflow-x:auto;padding-bottom:8px}
+.round{display:flex;flex-direction:column;justify-content:space-around;gap:16px;min-width:210px}
+.round h3{font-size:.95rem;color:var(--muted)}
+.bm{border:1px solid var(--line);border-radius:8px;background:var(--sunk);overflow:hidden}
+.bm .slot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;font-size:.92rem}
+.bm .slot+.slot{border-top:1px solid var(--line)}
+.bm .slot.won{font-weight:600}
+.bm .slot.won .sd{color:var(--ball)}
+.bm .slot.lost{color:var(--muted)}
+.bm .sd{font-family:var(--f-num);font-size:.75rem;color:var(--muted);width:20px;display:inline-block}
+.bm .foot{padding:6px 10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);background:var(--surface)}
+.tlist{display:flex;gap:8px;flex-wrap:wrap}
+.tpick{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left;display:flex;flex-direction:column}
+.tpick[aria-pressed="true"]{border-color:var(--table);box-shadow:inset 0 0 0 1px var(--table)}
+.tpick span{font-size:.8rem;color:var(--muted)}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.checks label{text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--ink);font-weight:400;display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.checks label span{margin-left:auto;font-family:var(--f-num);font-size:.8rem;color:var(--muted)}
+
+.login{min-height:100%;display:grid;place-items:center;padding-inline:16px;padding-block:48px}
+.login-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:440px;width:100%;overflow:hidden}
+.login-top{background:var(--table);color:var(--on-table);padding:28px 24px 22px;border-bottom:4px solid var(--on-table);display:flex;flex-direction:column;gap:6px}
+.login-top h1{font-family:var(--f-display);font-weight:700;font-size:2rem;letter-spacing:.04em;text-transform:uppercase;margin:0;display:flex;gap:10px;align-items:center;line-height:1.1}
+.login-top p{margin:0;opacity:.85}
+.login-body{padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.btn-42{background:#000;color:#fff;border:0;border-radius:8px;padding:12px 16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-42 .mark{font-family:var(--f-display);font-weight:700;font-size:1.2rem;border:2px solid #fff;padding:0 5px;border-radius:3px;line-height:1.2}
+.pick{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto}
+.pick button{display:flex;justify-content:space-between;gap:8px;border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left}
+.pick button span{font-family:var(--f-num);font-size:.85rem;color:var(--muted)}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+
+.overlay{position:fixed;inset:0;background:rgba(10,16,26,.55);display:grid;place-items:center;padding:16px;z-index:20}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.95rem;z-index:30;max-width:calc(100% - 32px)}
+@media (max-width:520px){.panel{padding:16px}.tbl-wrap{margin-inline:-16px;padding-inline:16px}.brand{font-size:1.25rem}}
+@media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{transform:translate(-50%,8px);opacity:0}}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+(()=>{
+const SC=173.7178, TAU=0.5;
+let S=null, CFG={authMode:'dev',season:''};
+const ui={view:'ladder',pid:null,tid:null,sort:'rating',opp:'',bo:5,devUsers:null,loginMsg:''};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P=id=>S.players.find(p=>p.id===Number(id));
+
+/* ---------- API ---------- */
+async function api(path,body){
+  const opts=body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)};
+  const r=await fetch(path,{credentials:'same-origin',...opts});
+  let data=null;try{data=await r.json()}catch(_){}
+  if(!r.ok){const e=new Error(data&&data.error||`Something went wrong (${r.status}). Try again.`);e.status=r.status;throw e}
+  return data;
+}
+async function refresh(){
+  try{S=await api('/api/state')}catch(e){S=null;if(e.status!==401)toast(e.message)}
+  render();
+}
+async function act(fn){try{await fn()}catch(e){toast(e.message)}}
+
+/* ---------- client-side previews only (the server owns the real numbers) ---------- */
+const gf=phi=>1/Math.sqrt(1+3*phi*phi/(Math.PI*Math.PI));
+const Ef=(mu,muj,phij)=>1/(1+Math.exp(-gf(phij)*(mu-muj)));
+function glicko(p,o,s){
+  const mu=(p.r-1500)/SC,phi=p.rd/SC,muj=(o.r-1500)/SC,phij=o.rd/SC,g=gf(phij),e=Ef(mu,muj,phij),v=1/(g*g*e*(1-e)),delta=v*g*(s-e);
+  const a=Math.log(p.vol*p.vol),d2=delta*delta,p2=phi*phi;
+  const f=x=>{const ex=Math.exp(x);return ex*(d2-p2-v-ex)/(2*Math.pow(p2+v+ex,2))-(x-a)/(TAU*TAU)};
+  let A=a,B;if(d2>p2+v)B=Math.log(d2-p2-v);else{let k=1;while(f(a-k*TAU)<0)k++;B=a-k*TAU}
+  let fA=f(A),fB=f(B),n=0;while(Math.abs(B-A)>1e-6&&n++<100){const C=A+(A-B)*fA/(fB-fA),fC=f(C);if(fC*fB<=0){A=B;fA=fB}else fA/=2;B=C;fB=fC}
+  const vol=Math.exp(A/2),phiS=Math.sqrt(p2+vol*vol),phiN=1/Math.sqrt(1/(phiS*phiS)+1/v);
+  return{r:(mu+phiN*phiN*g*(s-e))*SC+1500};
+}
+function winChance(p,o){const ph=Math.sqrt((p.rd/SC)**2+(o.rd/SC)**2);return Ef((p.r-1500)/SC,(o.r-1500)/SC,ph)}
+function validSet(x,y){if(x===y)return false;const hi=Math.max(x,y),lo=Math.min(x,y);if(hi<11)return false;return hi===11?lo<=9:hi-lo===2}
+
+/* ---------- helpers ---------- */
+const games=p=>p.w+p.l;
+const prov=p=>p.rd>150||games(p)<5;
+const ranked=()=>[...S.players].filter(p=>games(p)>0).sort((a,b)=>b.r-a.r);
+const rankOf=id=>ranked().findIndex(p=>p.id===id)+1;
+const myMatches=id=>S.matches.filter(m=>m.status==='confirmed'&&(m.a===id||m.b===id)).sort((x,y)=>y.t-x.t);
+const incoming=id=>S.matches.filter(m=>m.status==='pending'&&m.b===id);
+const outgoing=id=>S.matches.filter(m=>m.status==='pending'&&m.a===id);
+const opp=(m,id)=>m.a===id?m.b:m.a;
+const setsFor=(m,id)=>m.a===id?m.sets:m.sets.map(s=>[s[1],s[0]]);
+const tally=sets=>{let a=0,b=0;sets.forEach(s=>s[0]>s[1]?a++:b++);return[a,b]};
+const fmtSets=sets=>sets.map(s=>s[0]+'–'+s[1]).join(', ');
+const fmtD=d=>(d>=0?'+':'−')+Math.abs(Math.round(d));
+function ago(t){const d=(Date.now()-t)/864e5;if(d<1/24)return'just now';if(d<1)return Math.round(d*24)+'h ago';if(d<2)return'yesterday';return Math.round(d)+' days ago'}
+function toast(msg){const r=document.getElementById('toast-root');r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>r.innerHTML='',3500)}
+const nameBtn=p=>`<button class="pname" data-act="player" data-pid="${p.id}"><b>${esc(p.name)}</b><span>${esc(p.login)}</span></button>`;
+function roundName(t,r){const left=t.rounds.length-r;return left===1?'Final':left===2?'Semifinals':left===3?'Quarterfinals':left===4?'Round of 16':'Round '+(r+1)}
+
+/* ---------- views ---------- */
+function render(){
+  const app=document.getElementById('app');
+  if(!S){app.innerHTML=viewLogin();return}
+  const me=P(S.me),inc=incoming(me.id).length;
+  const tab=(v,l,extra='')=>`<button class="tab" data-act="nav" data-view="${v}" ${ui.view===v?'aria-current="page"':''}>${l}${extra}</button>`;
+  app.innerHTML=`<header class="top"><div class="top-in">
+    <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p>
+      <div class="who">Signed in as <b>${esc(me.login)}</b><button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div>
+    <nav class="tabs" aria-label="Sections">${tab('ladder','Ladder')}${tab('log','Log match')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}${tab('tourn','Tournaments')}${tab('profile','Profile')}</nav>
+  </div></header>
+  ${S.authMode==='dev'?'<div class="demo-note">Development mode: sign-in is simulated. Add 42 credentials to the server config to switch to real 42 sign-in.</div>':''}
+  <main id="main"></main>`;
+  ({ladder:viewLadder,log:viewLog,inbox:viewInbox,tourn:viewTourn,profile:viewProfile})[ui.view](document.getElementById('main'),me);
+}
+
+function viewLogin(){
+  const msg=ui.loginMsg?`<p class="status err">${esc(ui.loginMsg)}</p>`:'';
+  if(CFG.authMode==='42')return `<div class="login"><div class="login-card">
+    <div class="login-top"><h1><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</h1><p>Ratings, matches and tournaments for the campus table.</p></div>
+    <div class="login-body">${msg}<a class="btn-42" href="/auth/42" style="text-decoration:none"><span class="mark">42</span>Sign in with 42 intra</a>
+    <p class="note">We store your 42 login, name and the matches you play. Nothing else.</p></div></div></div>`;
+  return `<div class="login"><div class="login-card">
+    <div class="login-top"><h1><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</h1><p>Ratings, matches and tournaments for the campus table.</p></div>
+    <div class="login-body">${msg}<p class="note">Development mode: 42 sign-in isn't configured yet, so pick a test account.</p>
+      <div class="pick">${(ui.devUsers||[]).map(u=>`<button data-act="devlogin" data-pid="${u.id}"><b>${esc(u.name)}</b><span>${esc(u.login)}</span></button>`).join('')||'<p class="empty">Loading accounts…</p>'}</div>
+    </div></div></div>`;
+}
+
+function viewLadder(main,me){
+  const rk=rankOf(me.id),list=ranked();
+  if(ui.sort==='points')list.sort((a,b)=>b.pts-a.pts||b.r-a.r);
+  const inc=incoming(me.id).length;
+  main.innerHTML=`<section class="panel">
+    <div class="head-row"><div><h2>${esc(S.season)} ladder</h2><p class="lede">Rating measures skill (Glicko-2) and can go down. Season points reward playing and reset each season.</p></div>
+      <div class="seg" role="group" aria-label="Sort by"><button data-act="sort" data-sort="rating" aria-pressed="${ui.sort==='rating'}">Rating</button><button data-act="sort" data-sort="points" aria-pressed="${ui.sort==='points'}">Season points</button></div></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Your rank</span><span class="v">${rk?'#'+rk:'–'} <small>of ${list.length}</small></span></div>
+      <div class="stat"><span class="k">Rating</span><span class="v">${Math.round(me.r)} <small>±${Math.round(me.rd)}</small></span></div>
+      <div class="stat"><span class="k">Season points</span><span class="v">${me.pts}</span></div>
+      <div class="stat"><span class="k">Record</span><span class="v">${me.w}–${me.l}</span></div>
+    </div>
+    ${inc?`<div class="actions"><button class="btn btn-sm" data-act="nav" data-view="inbox">${inc} result${inc>1?'s':''} waiting for your confirmation</button></div>`:''}
+    ${list.length?`<div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Player</th><th class="r">Rating</th><th class="r">W–L</th><th>Last 5</th><th class="r">Points</th></tr></thead>
+      <tbody>${list.map((p,i)=>{const f=myMatches(p.id).slice(0,5).reverse();
+        return `<tr class="${p.id===me.id?'me':''}"><td class="rank">${i+1}</td><td>${nameBtn(p)}</td>
+        <td class="r num">${Math.round(p.r)}${prov(p)?'<span class="chip" title="Rating still settling: few games or high uncertainty">prov.</span>':''}</td>
+        <td class="r num">${p.w}–${p.l}</td>
+        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td>
+        <td class="r num">${p.pts}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="empty">Nobody has played a rated match yet. <button class="link-btn" data-act="nav" data-view="log">Log the first one</button></p>'}
+  </section>`;
+}
+
+function setEditor(host,bo,prefix,labA,labB,onChange){
+  host.innerHTML=`<div class="set-head"><span>Set</span><span>${esc(labA)}</span><span>${esc(labB)}</span></div><div class="sets">${
+    Array.from({length:bo},(_,i)=>`<div class="set-row"><span class="sn">Set ${i+1}</span>
+    <input id="${prefix}-a${i}" type="number" inputmode="numeric" min="0" max="99" aria-label="Set ${i+1}, ${esc(labA)}">
+    <input id="${prefix}-b${i}" type="number" inputmode="numeric" min="0" max="99" aria-label="Set ${i+1}, ${esc(labB)}"></div>`).join('')}</div>`;
+  const need=Math.ceil(bo/2);
+  function read(){
+    const sets=[];let err='',wa=0,wb=0,done=false;
+    for(let i=0;i<bo;i++){
+      const ia=host.querySelector(`#${prefix}-a${i}`),ib=host.querySelector(`#${prefix}-b${i}`);
+      ia.classList.remove('bad');ib.classList.remove('bad');
+      const va=ia.value.trim(),vb=ib.value.trim();
+      if(done){ia.disabled=ib.disabled=true;ia.value=ib.value='';continue}
+      ia.disabled=ib.disabled=false;
+      if(!va&&!vb)continue;
+      if(!va||!vb){err=err||`Set ${i+1}: enter both scores.`;continue}
+      const x=+va,y=+vb;
+      if(!validSet(x,y)){ia.classList.add('bad');ib.classList.add('bad');err=err||`Set ${i+1}: ${x}–${y} isn't a valid set. Play to 11, win by 2.`;continue}
+      sets.push([x,y]);x>y?wa++:wb++;
+      if(wa===need||wb===need)done=true;
+    }
+    return{sets,err,wa,wb,decided:done&&!err};
+  }
+  host.addEventListener('input',()=>onChange(read()));
+  return read;
+}
+
+function viewLog(main,me){
+  const others=S.players.filter(p=>p.id!==me.id).sort((a,b)=>a.name.localeCompare(b.name));
+  main.innerHTML=`<section class="panel">
+    <div><h2>Log a match</h2><p class="lede">Your opponent confirms the result before any rating changes. If they don't respond, it confirms itself after ${S.autoConfirmHours} hours.</p></div>
+    <div class="field"><label for="opp">Opponent</label><select id="opp"><option value="">Choose a player…</option>${others.map(p=>`<option value="${p.id}" ${String(ui.opp)===String(p.id)?'selected':''}>${esc(p.name)} (${esc(p.login)}) · ${Math.round(p.r)}</option>`).join('')}</select></div>
+    <div class="field"><span class="lbl">Format</span><div class="seg" role="group" aria-label="Format"><button data-act="bo" data-bo="3" aria-pressed="${ui.bo===3}">Best of 3</button><button data-act="bo" data-bo="5" aria-pressed="${ui.bo===5}">Best of 5</button></div></div>
+    <div id="pred"></div><div id="sets"></div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <div class="actions"><button id="send" class="btn btn-primary" disabled>Send for confirmation</button></div>
+  </section>`;
+  const sel=main.querySelector('#opp'),pred=main.querySelector('#pred'),st=main.querySelector('#status'),send=main.querySelector('#send');
+  let state={sets:[],decided:false,err:''};
+  function upd(){
+    const o=ui.opp&&P(ui.opp);
+    if(o){const c=winChance(me,o),w=glicko(me,o,1).r-me.r,l=glicko(me,o,0).r-me.r;
+      pred.innerHTML=`<div class="pred"><span>Win chance <b>${Math.round(c*100)}%</b></span><span>If you win <b class="up">${fmtD(w)}</b></span><span>If you lose <b class="down">${fmtD(l)}</b></span></div>`}
+    else pred.innerHTML='';
+    if(state.err){st.className='status err';st.textContent=state.err}
+    else if(state.decided){st.className='status ok';st.textContent=state.wa>state.wb?`You win ${state.wa}–${state.wb}.`:`${o?o.name.split(' ')[0]:'They'} win ${state.wb}–${state.wa}.`}
+    else{st.className='status';st.textContent=state.sets.length?`Score so far ${state.wa}–${state.wb}.`:''}
+    send.disabled=!(o&&state.decided);
+  }
+  const read=setEditor(main.querySelector('#sets'),ui.bo,'lg','You','Opponent',s=>{state=s;upd()});
+  sel.addEventListener('change',()=>{ui.opp=sel.value;upd()});
+  send.addEventListener('click',()=>act(async()=>{
+    const o=P(ui.opp);if(!o||!state.decided)return;
+    send.disabled=true;
+    try{await api('/api/matches',{opponentId:o.id,bestOf:ui.bo,sets:state.sets})}finally{send.disabled=false}
+    ui.opp='';ui.view='inbox';await refresh();toast(`Sent to ${o.name} for confirmation.`);
+  }));
+  state=read();upd();
+}
+
+function viewInbox(main,me){
+  const inc=incoming(me.id).sort((a,b)=>b.t-a.t),out=outgoing(me.id).sort((a,b)=>b.t-a.t);
+  const disp=S.matches.filter(m=>m.status==='disputed').sort((a,b)=>b.t-a.t);
+  const left=m=>{const h=Math.max(0,Math.ceil((m.created+S.autoConfirmHours*36e5-Date.now())/36e5));return `confirms itself in ${h}h`};
+  const line=(body,actions)=>`<div class="item"><div class="main">${body}</div>${actions?`<div class="actions">${actions}</div>`:''}</div>`;
+  main.innerHTML=`<section class="panel"><div><h2>Needs your confirmation</h2><p class="lede">Check the score. Confirming updates both ratings. If it's wrong, dispute it and log it again together.</p></div>
+    <div class="list">${inc.length?inc.map(m=>{const o=P(m.a),mine=setsFor(m,me.id),[a,b]=tally(mine),won=m.w===me.id;
+      return line(`<span><b>${esc(o.name)}</b> logged a ${won?'win for you':'loss for you'} <span class="chip ${won?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · best of ${m.bo} · ${ago(m.created)} · ${left(m)}</span>`,
+      `<button class="btn btn-good btn-sm" data-act="confirm" data-mid="${m.id}">Confirm</button><button class="btn btn-sm" data-act="dispute" data-mid="${m.id}">Dispute</button>`)}).join(''):'<p class="empty">Nothing to confirm.</p>'}</div></section>
+  <section class="panel"><h3>Waiting on your opponent</h3><div class="list">${out.length?out.map(m=>{const o=P(m.b),[a,b]=tally(m.sets);
+      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(m.sets)}</span> · sent ${ago(m.created)} · ${left(m)}</span>`,
+      `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}<button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`)}).join(''):'<p class="empty">No results waiting. <button class="link-btn" data-act="nav" data-view="log">Log a match</button></p>'}</div></section>
+  ${disp.length?`<section class="panel"><h3>Disputed</h3><div class="list">${disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id);
+      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip warn">Disputed</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · no rating change</span>`)}).join('')}</div></section>`:''}`;
+}
+
+function viewProfile(main,me){
+  const p=P(ui.pid||me.id),ms=myMatches(p.id),rk=rankOf(p.id);
+  const h=[{r:1500},...p.hist].slice(-41);
+  let chart='<p class="empty">No rated games yet.</p>';
+  if(h.length>1){
+    const W=640,H=200,L=44,Rt=12,T=12,B=26,rs=h.map(x=>x.r);
+    const lo=Math.floor((Math.min(...rs)-20)/50)*50,hi=Math.ceil((Math.max(...rs)+20)/50)*50;
+    const X=i=>L+i*(W-L-Rt)/(h.length-1),Y=r=>T+(hi-r)*(H-T-B)/(hi-lo);
+    const ticks=[];for(let v=lo;v<=hi;v+=(hi-lo)>200?100:50)ticks.push(v);
+    const pts=h.map((x,i)=>`${X(i).toFixed(1)},${Y(x.r).toFixed(1)}`);
+    chart=`<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating over the last ${h.length-1} games, now ${Math.round(p.r)}">
+      ${ticks.map(v=>`<line x1="${L}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${v}</text>`).join('')}
+      <polygon points="${L},${H-B} ${pts.join(' ')} ${X(h.length-1)},${H-B}" fill="var(--table)" opacity=".12"/>
+      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--table)" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${X(h.length-1)}" cy="${Y(p.r)}" r="5" fill="var(--ball)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${L}" y="${H-6}" font-size="11" fill="var(--muted)">${h.length-1} games ago</text><text x="${W-Rt}" y="${H-6}" font-size="11" fill="var(--muted)" text-anchor="end">now</text>
+    </svg></div>`;
+  }
+  const isMe=p.id===me.id;
+  main.innerHTML=`<section class="panel">
+    <div class="head-row"><div><h2>${esc(p.name)}${isMe?' <span class="chip">you</span>':''}</h2><p class="lede num">${esc(p.login)}</p></div>
+    ${!isMe?`<button class="btn btn-sm" data-act="challenge" data-pid="${p.id}">Log a match vs ${esc(p.name.split(' ')[0])}</button>`:''}</div>
+    <div class="stats">
+      <div class="stat"><span class="k">Rank</span><span class="v">${rk?'#'+rk:'–'}</span></div>
+      <div class="stat"><span class="k">Rating</span><span class="v">${Math.round(p.r)} <small>±${Math.round(p.rd)}</small></span></div>
+      <div class="stat"><span class="k">Record</span><span class="v">${p.w}–${p.l}</span></div>
+      <div class="stat"><span class="k">Season points</span><span class="v">${p.pts}</span></div>
+      ${!isMe?`<div class="stat"><span class="k">Your win chance</span><span class="v">${Math.round(winChance(me,p)*100)}%</span></div>`:''}
+    </div>
+    <h3>Rating history</h3>${chart}
+  </section>
+  <section class="panel"><h3>Recent matches</h3><div class="list">${ms.slice(0,12).map(m=>{const o=P(opp(m,p.id)),won=m.w===p.id,s=setsFor(m,p.id),[a,b]=tally(s),t=m.tourn&&S.tournaments.find(x=>x.id===m.tourn);
+    const d=m.delta?m.delta[p.id]:0;
+    return `<div class="item"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}</span>
+      <span class="sub"><span class="score">${fmtSets(s)}</span> · ${t?esc(t.name)+' · ':''}${ago(m.t)}</span></div>
+      <span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span></div>`}).join('')||'<p class="empty">No matches yet.</p>'}</div></section>`;
+}
+
+function canReport(t,m){return S.isAdmin||[m.a,m.b,t.createdBy].includes(S.me)}
+function viewTourn(main,me){
+  if(!S.tournaments.some(x=>x.id===ui.tid))ui.tid=(S.tournaments.find(t=>t.status==='live')||S.tournaments[0]||{}).id||null;
+  const t=S.tournaments.find(x=>x.id===ui.tid);
+  const picker=S.tournaments.map(x=>`<button class="tpick" data-act="tsel" data-tid="${x.id}" aria-pressed="${x.id===ui.tid}"><b>${esc(x.name)}</b><span>${x.seeds.length} players · ${x.status==='done'?'finished':'in progress'}</span></button>`).join('');
+  let bracket='';
+  if(t){
+    const seedNo=id=>t.seeds.indexOf(id)+1;
+    bracket=`<section class="panel"><div><h2>${esc(t.name)}</h2><p class="lede">Single elimination, best of ${t.bo}, seeded by rating. Organised by ${esc(P(t.createdBy).name)}. Results count toward the ladder.</p></div>
+      ${t.status==='done'?`<div class="pred"><span>Champion <b>${esc(P(t.champion).name)}</b></span>${t.awards.map(a=>`<span>${esc(P(a.id).name.split(' ')[0])} <b class="up">+${a.n}</b> pts (${a.why})</span>`).join('')}</div>`:''}
+      <div class="bracket">${t.rounds.map((rd,r)=>`<div class="round"><h3>${roundName(t,r)}</h3>${rd.map((m,k)=>{
+        const slot=(id,i)=>{if(!id)return `<div class="slot lost"><span><span class="sd"></span>${m.bye&&i===1?'Bye':'TBD'}</span></div>`;
+          const cls=m.w?(m.w===id?'won':'lost'):'';const ss=m.sets?m.sets.filter(s=>i===0?s[0]>s[1]:s[1]>s[0]).length:'';
+          return `<div class="slot ${cls}"><span><span class="sd">${seedNo(id)}</span>${esc(P(id).name)}</span><span class="num">${m.bye?'':ss}</span></div>`};
+        const ready=m.a&&m.b&&!m.w;
+        return `<div class="bm">${slot(m.a,0)}${slot(m.b,1)}${ready?`<div class="foot"><span>Ready to play</span>${canReport(t,m)?`<button class="btn btn-sm" data-act="report" data-r="${r}" data-k="${k}">Enter result</button>`:''}</div>`:m.sets?`<div class="foot"><span class="score">${fmtSets(m.sets)}</span></div>`:''}</div>`}).join('')}</div>`).join('')}</div></section>`;
+  }
+  const players=ranked().concat(S.players.filter(p=>games(p)===0));
+  main.innerHTML=`${S.tournaments.length?`<div class="tlist" role="group" aria-label="Tournaments">${picker}</div>`:''}${bracket}
+  <section class="panel"><div><h3>New tournament</h3><p class="lede">Pick at least 3 players. Top seeds get byes when the field isn't a power of two.</p></div>
+    <div class="field"><label for="tname">Name</label><input id="tname" type="text" placeholder="e.g. Lunch Break Cup" maxlength="60"></div>
+    <div class="checks">${players.map(p=>`<label><input type="checkbox" class="tchk" value="${p.id}" id="tc-${p.id}">${esc(p.name)}<span>${Math.round(p.r)}</span></label>`).join('')}</div>
+    <div class="actions"><button class="btn btn-primary" data-act="tcreate">Create bracket</button></div></section>`;
+}
+
+function openReport(r,k){
+  const t=S.tournaments.find(x=>x.id===ui.tid),m=t.rounds[r][k],A=P(m.a),B=P(m.b);
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mh">
+    <h3 id="mh">${esc(roundName(t,r))}: ${esc(A.name)} vs ${esc(B.name)}</h3>
+    <div id="msets"></div><div id="mst" class="status" aria-live="polite"></div>
+    <div class="actions"><button class="btn btn-primary" id="msave" disabled>Save result</button><button class="btn" data-act="mclose">Cancel</button></div></div></div>`;
+  let st={};const mst=root.querySelector('#mst'),ms=root.querySelector('#msave');
+  setEditor(root.querySelector('#msets'),t.bo,'tm',A.name.split(' ')[0],B.name.split(' ')[0],s=>{st=s;
+    mst.className='status '+(s.err?'err':s.decided?'ok':'');
+    mst.textContent=s.err||(s.decided?`${(s.wa>s.wb?A:B).name} wins ${Math.max(s.wa,s.wb)}–${Math.min(s.wa,s.wb)}.`:'');
+    ms.disabled=!s.decided});
+  ms.addEventListener('click',()=>act(async()=>{
+    if(!st.decided)return;ms.disabled=true;
+    let res;try{res=await api(`/api/tournaments/${t.id}/results`,{round:r,slot:k,sets:st.sets})}catch(e){ms.disabled=false;throw e}
+    root.innerHTML='';await refresh();
+    toast(res.finished?`${P(res.winner).name} wins ${t.name}!`:'Result saved. Ratings updated.');
+  }));
+  root.querySelector('#tm-a0').focus();
+}
+
+async function loadDevUsers(){if(CFG.authMode!=='dev')return;try{ui.devUsers=await api('/api/dev-users')}catch(e){ui.loginMsg=e.message}render()}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const a=el.dataset.act;
+  if(a==='mclose-bg'&&e.target!==el)return;
+  switch(a){
+    case 'devlogin':act(async()=>{await api('/auth/dev-login',{userId:Number(el.dataset.pid)});ui.view=el.dataset.then||'ladder';ui.pid=null;await refresh();if(el.dataset.then)toast(`Signed in as ${P(S.me).login}.`)});break;
+    case 'signout':act(async()=>{await api('/auth/logout',{});S=null;render();loadDevUsers()});break;
+    case 'nav':ui.view=el.dataset.view;if(ui.view==='profile')ui.pid=null;render();window.scrollTo(0,0);break;
+    case 'player':ui.view='profile';ui.pid=Number(el.dataset.pid);render();window.scrollTo(0,0);break;
+    case 'challenge':ui.view='log';ui.opp=el.dataset.pid;render();break;
+    case 'sort':ui.sort=el.dataset.sort;render();break;
+    case 'bo':ui.bo=+el.dataset.bo;render();break;
+    case 'confirm':act(async()=>{const r=await api(`/api/matches/${el.dataset.mid}/confirm`,{});await refresh();toast(`Confirmed. Your rating ${fmtD(r.delta||0)}, +${r.pts||0} season points.`)});break;
+    case 'dispute':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{});await refresh();toast('Marked as disputed. No ratings changed.')});break;
+    case 'withdraw':act(async()=>{await api(`/api/matches/${el.dataset.mid}/withdraw`,{});await refresh();toast('Result withdrawn.')});break;
+    case 'tsel':ui.tid=Number(el.dataset.tid);render();break;
+    case 'report':openReport(+el.dataset.r,+el.dataset.k);break;
+    case 'mclose':case 'mclose-bg':document.getElementById('modal-root').innerHTML='';break;
+    case 'tcreate':act(async()=>{
+      const ids=[...document.querySelectorAll('.tchk:checked')].map(x=>Number(x.value)),name=document.getElementById('tname').value.trim();
+      const r=await api('/api/tournaments',{name,playerIds:ids});ui.tid=r.id;await refresh();window.scrollTo(0,0);toast('Bracket created.')});break;
+  }
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal-root').innerHTML=''});
+
+(async()=>{
+  const q=new URLSearchParams(location.search).get('login');
+  if(q==='failed')ui.loginMsg='42 sign-in did not complete. Try again.';
+  if(q==='campus')ui.loginMsg='This ladder is only open to students of this campus.';
+  if(q)history.replaceState(null,'',location.pathname);
+  try{CFG=await api('/api/config')}catch(_){}
+  await refresh();
+  if(!S)loadDevUsers();
+  setInterval(()=>{if(S&&!document.querySelector('.overlay')&&ui.view!=='log'&&ui.view!=='tourn')refresh()},60e3);
+})();
+})();
+</script>
+</body>
+</html>

@@ -1,40 +1,69 @@
 # 42 Table Tennis Ladder
 
-A rating ladder for the table tennis players at 42. Players sign in, log matches, climb the ladder, and play small knockout tournaments.
+A rating ladder for the table tennis players at 42. Students sign in with their 42 account, log matches, climb the ladder, and run small knockout tournaments.
 
-> **Status: clickable demo.** Everything runs in the browser. Sign-in is simulated, and data is saved in the browser's local storage. There is no backend yet.
+## Run it locally
 
-## Try it
+You need Node.js 22.13 or newer. Check your version with `node -v`.
 
-Open `index.html` in any browser. You don't need a build step or a server.
+```bash
+npm install
+npm run dev
+```
 
-To host it for free, enable **GitHub Pages**: in the repo, go to Settings → Pages → Deploy from branch → `main` / root.
+Then open http://localhost:3000.
 
-## What the demo does
+Without 42 credentials the app runs in **dev mode**. Sign-in is simulated, and an empty database is filled with 14 demo players, about 70 matches and a knockout that's still running. To start over, delete the `data/` folder.
 
-- **Simulated 42 sign-in.** You pick one of 14 example players. The real version will use 42 OAuth.
-- **Ladder.** Players are ranked by a Glicko-2 rating. Ratings marked *provisional* are still settling, because the player has few games or a high rating deviation.
-- **Season points.** These are separate from rating and reward playing:
-  - a win earns 3 points, plus 2 more for an upset over a player rated 50 or more points higher
-  - a loss earns 1 point
-  - tournaments award the champion 10, the runner-up 6, and each semifinalist 3
-- **Match logging with confirmation.** One player logs the score and the opponent confirms or disputes it. Ratings change only after confirmation.
-- **Score validation.** Each set follows ITTF rules: play to 11, win by 2. Matches are best of 3 or best of 5.
-- **Prediction.** Before you log a match, the page shows your win chance and how much your rating would move either way.
-- **Knockout tournaments.** Single elimination, seeded by rating. Top seeds get byes when the field isn't a power of two. Tournament matches also count toward the ladder.
-- **Profiles.** Each player has a rating-history chart and a list of recent matches.
+Run the tests with `npm test`.
 
-**Reset demo data** restores the example dataset.
+## Turn on real 42 sign-in
 
-## Roadmap
+1. Go to profile.intra.42.fr, open **API**, and register a new app.
+2. Set the redirect URI to `<BASE_URL>/auth/42/callback`, for example `http://localhost:3000/auth/42/callback`.
+3. Copy `.env.example` to `.env` and fill in these values:
+   - `FT_CLIENT_ID` and `FT_CLIENT_SECRET` from the app you registered
+   - `COOKIE_SECRET`, which you can generate with `openssl rand -hex 32`
+   - `BASE_URL`
+4. Restart the server. The login screen now shows **Sign in with 42 intra**.
 
-1. A backend and database, for example Postgres. Rating updates, match confirmation and brackets move server-side.
-2. Real sign-in through the 42 intra API (OAuth2). The app needs to be registered at profile.intra.42.fr.
-3. Auto-confirm results 24 hours after logging.
-4. Rating deviation that grows with inactivity, so a player's rating becomes uncertain again after time away.
-5. Seasons that reset points while keeping ratings.
-6. A QR code at the table that opens the "log a match" screen.
+You can also set these optional values:
+- `ALLOWED_CAMPUS_IDS` limits sign-in to students of your campus.
+- `ADMIN_LOGINS` lists the 42 logins that may enter results for any tournament.
 
-## Rating system
+## How it works
 
-Ratings use [Glicko-2](http://www.glicko.net/glicko/glicko2.pdf) with τ = 0.5. Each match is treated as its own rating period, and the rating deviation never drops below 45.
+| Part | Where |
+|---|---|
+| Server, routes, 42 OAuth, sessions | `server/app.js` |
+| Glicko-2, score rules, brackets | `server/rules.js` |
+| Ratings and points, replayed from the match log | `server/standings.js` |
+| Database schema (SQLite, built into Node) | `server/db.js` |
+| The web app (one page) | `public/index.html` |
+| The original static demo, for GitHub Pages | `docs/index.html` |
+
+**The match log is the source of truth.** Ratings, records and season points are never stored. The server recomputes them by replaying every confirmed match in order. That keeps every number auditable. It also means you can fix a result or change the points rules and the whole ladder updates.
+
+### Rules
+
+- **Rating:** [Glicko-2](http://www.glicko.net/glicko/glicko2.pdf) with τ = 0.5. Each match is treated as its own rating period, and the rating deviation never drops below 45.
+- **Season points:**
+  - a win earns 3, plus 2 more for beating someone rated 50 or more points higher
+  - a loss earns 1
+  - tournaments award the champion 10, the runner-up 6 and each semifinalist 3
+  - points count only from `SEASON_START` on, while ratings carry over between seasons
+- **Confirmation:** one player logs the result and the opponent confirms or disputes it. Results nobody responds to confirm themselves after `AUTO_CONFIRM_HOURS` (24 by default).
+- **Scores:** sets follow ITTF rules: play to 11, win by 2.
+- **Tournaments:** single elimination, best of 3, seeded by rating. Top seeds get byes. The two players, the organiser or an admin can enter a result, and tournament results count right away.
+
+## Deploying
+
+A single small server is enough. The app is one Node process and one SQLite file.
+
+- Set `HOST=0.0.0.0` and `BASE_URL=https://your-domain`, and put the server behind HTTPS. Most hosts handle HTTPS for you.
+- Keep `data/ladder.db` on a persistent disk and back it up regularly.
+- Update the redirect URI in your 42 app to match the new `BASE_URL`.
+
+## Privacy
+
+The app stores each user's 42 login, display name, profile picture link and the matches they play. If someone asks to be removed, delete their user row and their matches.

@@ -1,0 +1,18 @@
+{
+  "name": "42-tt-ladder",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Table tennis rating ladder and tournaments for 42 students",
+  "main": "server/index.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.js",
+    "dev": "node --watch --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/static": "^8.2.0",
+    "fastify": "^5.6.0"
+  }
+}

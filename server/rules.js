@@ -88,6 +88,21 @@ function advance(rounds, r, k) {
   if (r + 1 < rounds.length) rounds[r + 1][k >> 1][k % 2 ? 'b' : 'a'] = m.w;
 }
 
-const isFinished = (rounds) => !!rounds[rounds.length - 1][0].w;
+const isFinished = (rounds) => rounds.length > 0 && !!rounds[rounds.length - 1][0].w;
 
-module.exports = { START, glicko, expected, validSet, checkMatch, tally, buildBracket, advance, isFinished, SCALE };
+// Tournament formats: best-of per stage. Rounds are mapped to a stage by their distance from the final.
+const BEST_OF = [3, 5, 7];
+const STAGES = ['early', 'qf', 'sf', 'final'];
+function stageOf(nRounds, r) {
+  const left = nRounds - r;
+  return left === 1 ? 'final' : left === 2 ? 'sf' : left === 3 ? 'qf' : 'early';
+}
+const roundBestOf = (nRounds, stages) => Array.from({ length: nRounds }, (_, r) => stages[stageOf(nRounds, r)]);
+function cleanStages(s) {
+  if (!s || typeof s !== 'object') return null;
+  const out = {};
+  for (const k of STAGES) { const v = Number(s[k]); if (!BEST_OF.includes(v)) return null; out[k] = v; }
+  return out;
+}
+
+module.exports = { START, glicko, expected, validSet, checkMatch, tally, buildBracket, advance, isFinished, SCALE, BEST_OF, STAGES, stageOf, roundBestOf, cleanStages };

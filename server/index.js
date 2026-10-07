@@ -7,7 +7,7 @@ const config = loadConfig();
 const db = open(config.dbFile);
 
 if (config.authMode === 'dev' && db.prepare('SELECT COUNT(*) AS n FROM users').get().n === 0) {
-  seedDemo(db);
+  seedDemo(db, config);
   console.log('Dev mode: empty database, filled it with demo players and matches.');
 }
 

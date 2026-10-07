@@ -52,7 +52,63 @@ function open(file) {
       finished_at INTEGER
     );
   `);
+  migrate(db);
   return db;
+}
+
+// Schema changes after the first version. PRAGMA user_version records which have run.
+function migrate(db) {
+  const version = db.prepare('PRAGMA user_version').get().user_version;
+  if (version < 2) {
+    db.exec('BEGIN');
+    try {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN coalition TEXT;
+        ALTER TABLE users ADD COLUMN coalition_color TEXT;
+
+        -- status: proposed (waiting for approval) > open (sign-ups) > live (bracket) > done; or rejected / cancelled
+        ALTER TABLE tournaments ADD COLUMN status TEXT NOT NULL DEFAULT 'live';
+        ALTER TABLE tournaments ADD COLUMN description TEXT NOT NULL DEFAULT '';
+        ALTER TABLE tournaments ADD COLUMN location TEXT NOT NULL DEFAULT '';
+        ALTER TABLE tournaments ADD COLUMN starts_at INTEGER;
+        ALTER TABLE tournaments ADD COLUMN stage_best_of TEXT;   -- JSON {early, qf, sf, final}
+        ALTER TABLE tournaments ADD COLUMN round_best_of TEXT;   -- JSON [bestOf per round], set when the bracket starts
+        ALTER TABLE tournaments ADD COLUMN max_players INTEGER;
+        ALTER TABLE tournaments ADD COLUMN signup_open INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE tournaments ADD COLUMN approved_by INTEGER REFERENCES users(id);
+
+        CREATE TABLE tournament_players (
+          tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+          user_id       INTEGER NOT NULL REFERENCES users(id),
+          status        TEXT NOT NULL CHECK (status IN ('invited','joined','declined')),
+          invited_by    INTEGER REFERENCES users(id),
+          created_at    INTEGER NOT NULL,
+          PRIMARY KEY (tournament_id, user_id)
+        );
+
+        CREATE TABLE challenges (
+          id           INTEGER PRIMARY KEY,
+          from_id      INTEGER NOT NULL REFERENCES users(id),
+          to_id        INTEGER NOT NULL REFERENCES users(id),
+          best_of      INTEGER NOT NULL,
+          message      TEXT NOT NULL DEFAULT '',
+          status       TEXT NOT NULL CHECK (status IN ('open','accepted','declined','cancelled','played')),
+          created_at   INTEGER NOT NULL,
+          responded_at INTEGER
+        );
+      `);
+      // Bring tournaments from version 1 forward.
+      const upd = db.prepare(`UPDATE tournaments SET status = ?, starts_at = created_at, stage_best_of = ?, round_best_of = ? WHERE id = ?`);
+      const join = db.prepare(`INSERT OR IGNORE INTO tournament_players (tournament_id, user_id, status, invited_by, created_at) VALUES (?, ?, 'joined', NULL, ?)`);
+      for (const t of db.prepare('SELECT * FROM tournaments').all()) {
+        const rounds = JSON.parse(t.bracket), bo = t.best_of;
+        upd.run(t.finished_at ? 'done' : 'live', JSON.stringify({ early: bo, qf: bo, sf: bo, final: bo }), JSON.stringify(rounds.map(() => bo)), t.id);
+        for (const uid of JSON.parse(t.seeds)) join.run(t.id, uid, t.created_at);
+      }
+      db.exec('PRAGMA user_version = 2');
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; }
+  }
 }
 
 module.exports = { open };

@@ -164,322 +164,101 @@ select,input[type=text]{background:var(--sunk);border:1px solid var(--line);bord
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.95rem;z-index:30;max-width:calc(100% - 32px)}
 @media (max-width:520px){.panel{padding:16px}.tbl-wrap{margin-inline:-16px;padding-inline:16px}.brand{font-size:1.25rem}}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{transform:translate(-50%,8px);opacity:0}}}
+/* ---- v2 additions ---- */
+:root{--table-ink:#1d4b86}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--table-ink:#8fb4ea}}
+:root[data-theme="dark"]{--table-ink:#8fb4ea}
+.top-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.new-match{background:var(--ball);color:#1b0f05;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;font-size:.95rem}
+.new-match:hover{filter:brightness(1.06)}
+.new-match .plus{font-size:1.15rem;line-height:1}
+.hero{display:flex;gap:16px 32px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between}
+.hero-id{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hero-id h2{font-size:1.9rem}
+.id-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-family:var(--f-num);font-size:.9rem}
+.rating-block{display:flex;flex-direction:column;align-items:flex-end}
+.rating-big{font-family:var(--f-display);font-weight:700;font-size:clamp(3.4rem,12vw,5.4rem);line-height:.9;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.rating-big small{font-family:var(--f-num);font-size:1rem;color:var(--muted);font-weight:500;margin-left:6px;letter-spacing:0}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+@media (max-width:520px){.rating-block{align-items:flex-start}}
+.coal{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-body);font-size:.8rem;font-weight:600;padding:2px 10px 2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.coal i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.coal-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.coal-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.coal-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;background:var(--sunk);position:relative;overflow:hidden}
+.coal-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+.coal-card b{font-family:var(--f-display);font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em}
+.coal-card .num{font-size:1.2rem}
+.coal-card span{font-size:.82rem;color:var(--muted)}
+.nudges{display:flex;gap:8px;flex-wrap:wrap}
+.notice{background:var(--warn-bg);color:var(--ink);border-radius:8px;padding:10px 12px;font-size:.92rem;max-width:560px}
+.notice b{color:var(--warn)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px}
+.trow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%;cursor:pointer}
+.trow:last-child{border-bottom:0}
+.trow:hover .tname{text-decoration:underline;text-underline-offset:3px}
+.tname{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .sub{font-size:.85rem;color:var(--muted)}
+.datebox{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:8px;padding:4px 0;background:var(--sunk)}
+.datebox b{font-family:var(--f-display);font-size:1.45rem;line-height:1}
+.datebox span{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.chip.st-live{background:var(--ball);color:#1b0f05;border-color:transparent}
+.chip.st-open{color:var(--table-ink);border-color:var(--table-ink)}
+.chip.st-proposed{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.chip.st-done{color:var(--muted)}
+.chip.st-rejected,.chip.st-cancelled{background:var(--loss-bg);color:var(--loss);border-color:transparent}
+.cal-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.cal-head h3{min-width:0}
+.cal-wrap{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:340px}
+.cal .dow{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px;background:var(--sunk);border-bottom:1px solid var(--line);font-weight:600}
+.cal .day{min-height:92px;padding:4px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px;min-width:0}
+.cal .day:nth-child(7n){border-right:0}
+.cal .day.out{background:var(--sunk)}
+.cal .day.out .dn{color:var(--muted);opacity:.6}
+.cal .dn{font-family:var(--f-num);font-size:.75rem;align-self:flex-start;padding:0 4px}
+.cal .day.today .dn{background:var(--ball);color:#1b0f05;border-radius:4px}
+.ev{font:inherit;font-size:.72rem;text-align:left;border:0;border-radius:4px;padding:2px 5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--table);color:var(--on-table);width:100%;font-weight:500}
+.ev.done{background:var(--line);color:var(--ink)}
+.ev.proposed{background:var(--warn-bg);color:var(--warn)}
+.ev.live{background:var(--ball);color:#1b0f05}
+@media (max-width:520px){.cal .day{min-height:66px;padding:3px 2px}.ev{font-size:.62rem;padding:1px 3px}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.meta{display:flex;flex-wrap:wrap;gap:6px 22px;color:var(--muted);font-size:.92rem}
+.meta b{color:var(--ink);font-weight:600}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.person{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.85rem;background:var(--sunk);cursor:pointer;color:var(--ink)}
+.person.inv{border-style:dashed;color:var(--muted)}
+.tpl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;max-width:720px}
+.tpl button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.tpl button[aria-pressed="true"]{border-color:var(--table-ink);box-shadow:inset 0 0 0 1px var(--table-ink)}
+.tpl button span{font-size:.8rem;color:var(--muted)}
+.stage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;max-width:720px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px;max-width:720px}
+.form-grid .field,.stage-grid .field{max-width:none}
+textarea,input[type=datetime-local],input[type=number].plain{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;font:inherit;color:inherit}
+textarea{min-height:76px;resize:vertical}
+.check{display:flex;gap:8px;align-items:center;font-size:.95rem;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400}
+.rounds-fmt{display:flex;flex-wrap:wrap;gap:8px}
+.rounds-fmt .rf{border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:.9rem;background:var(--sunk)}
+.rounds-fmt select{width:auto;padding:4px 6px}
+.round h3 .bo{font-family:var(--f-num);font-size:.75rem;letter-spacing:0;margin-left:6px;text-transform:none}
+.back{align-self:flex-start}
+details>summary{cursor:pointer;font-weight:600;color:var(--table-ink)}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mrow .right{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.mrow .pts{font-size:.8rem;color:var(--muted)}
+.chart polyline{stroke:var(--table-ink)}
+.chart polygon{fill:var(--table-ink)}
 </style>
-
 </head>
 <body>
 <div id="app"></div>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
-
-<script>
-(()=>{
-const SC=173.7178, TAU=0.5;
-let S=null, CFG={authMode:'dev',season:''};
-const ui={view:'ladder',pid:null,tid:null,sort:'rating',opp:'',bo:5,devUsers:null,loginMsg:''};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const P=id=>S.players.find(p=>p.id===Number(id));
-
-/* ---------- API ---------- */
-async function api(path,body){
-  const opts=body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)};
-  const r=await fetch(path,{credentials:'same-origin',...opts});
-  let data=null;try{data=await r.json()}catch(_){}
-  if(!r.ok){const e=new Error(data&&data.error||`Something went wrong (${r.status}). Try again.`);e.status=r.status;throw e}
-  return data;
-}
-async function refresh(){
-  try{S=await api('/api/state')}catch(e){S=null;if(e.status!==401)toast(e.message)}
-  render();
-}
-async function act(fn){try{await fn()}catch(e){toast(e.message)}}
-
-/* ---------- client-side previews only (the server owns the real numbers) ---------- */
-const gf=phi=>1/Math.sqrt(1+3*phi*phi/(Math.PI*Math.PI));
-const Ef=(mu,muj,phij)=>1/(1+Math.exp(-gf(phij)*(mu-muj)));
-function glicko(p,o,s){
-  const mu=(p.r-1500)/SC,phi=p.rd/SC,muj=(o.r-1500)/SC,phij=o.rd/SC,g=gf(phij),e=Ef(mu,muj,phij),v=1/(g*g*e*(1-e)),delta=v*g*(s-e);
-  const a=Math.log(p.vol*p.vol),d2=delta*delta,p2=phi*phi;
-  const f=x=>{const ex=Math.exp(x);return ex*(d2-p2-v-ex)/(2*Math.pow(p2+v+ex,2))-(x-a)/(TAU*TAU)};
-  let A=a,B;if(d2>p2+v)B=Math.log(d2-p2-v);else{let k=1;while(f(a-k*TAU)<0)k++;B=a-k*TAU}
-  let fA=f(A),fB=f(B),n=0;while(Math.abs(B-A)>1e-6&&n++<100){const C=A+(A-B)*fA/(fB-fA),fC=f(C);if(fC*fB<=0){A=B;fA=fB}else fA/=2;B=C;fB=fC}
-  const vol=Math.exp(A/2),phiS=Math.sqrt(p2+vol*vol),phiN=1/Math.sqrt(1/(phiS*phiS)+1/v);
-  return{r:(mu+phiN*phiN*g*(s-e))*SC+1500};
-}
-function winChance(p,o){const ph=Math.sqrt((p.rd/SC)**2+(o.rd/SC)**2);return Ef((p.r-1500)/SC,(o.r-1500)/SC,ph)}
-function validSet(x,y){if(x===y)return false;const hi=Math.max(x,y),lo=Math.min(x,y);if(hi<11)return false;return hi===11?lo<=9:hi-lo===2}
-
-/* ---------- helpers ---------- */
-const games=p=>p.w+p.l;
-const prov=p=>p.rd>150||games(p)<5;
-const ranked=()=>[...S.players].filter(p=>games(p)>0).sort((a,b)=>b.r-a.r);
-const rankOf=id=>ranked().findIndex(p=>p.id===id)+1;
-const myMatches=id=>S.matches.filter(m=>m.status==='confirmed'&&(m.a===id||m.b===id)).sort((x,y)=>y.t-x.t);
-const incoming=id=>S.matches.filter(m=>m.status==='pending'&&m.b===id);
-const outgoing=id=>S.matches.filter(m=>m.status==='pending'&&m.a===id);
-const opp=(m,id)=>m.a===id?m.b:m.a;
-const setsFor=(m,id)=>m.a===id?m.sets:m.sets.map(s=>[s[1],s[0]]);
-const tally=sets=>{let a=0,b=0;sets.forEach(s=>s[0]>s[1]?a++:b++);return[a,b]};
-const fmtSets=sets=>sets.map(s=>s[0]+'–'+s[1]).join(', ');
-const fmtD=d=>(d>=0?'+':'−')+Math.abs(Math.round(d));
-function ago(t){const d=(Date.now()-t)/864e5;if(d<1/24)return'just now';if(d<1)return Math.round(d*24)+'h ago';if(d<2)return'yesterday';return Math.round(d)+' days ago'}
-function toast(msg){const r=document.getElementById('toast-root');r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>r.innerHTML='',3500)}
-const nameBtn=p=>`<button class="pname" data-act="player" data-pid="${p.id}"><b>${esc(p.name)}</b><span>${esc(p.login)}</span></button>`;
-function roundName(t,r){const left=t.rounds.length-r;return left===1?'Final':left===2?'Semifinals':left===3?'Quarterfinals':left===4?'Round of 16':'Round '+(r+1)}
-
-/* ---------- views ---------- */
-function render(){
-  const app=document.getElementById('app');
-  if(!S){app.innerHTML=viewLogin();return}
-  const me=P(S.me),inc=incoming(me.id).length;
-  const tab=(v,l,extra='')=>`<button class="tab" data-act="nav" data-view="${v}" ${ui.view===v?'aria-current="page"':''}>${l}${extra}</button>`;
-  app.innerHTML=`<header class="top"><div class="top-in">
-    <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p>
-      <div class="who">Signed in as <b>${esc(me.login)}</b><button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div>
-    <nav class="tabs" aria-label="Sections">${tab('ladder','Ladder')}${tab('log','Log match')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}${tab('tourn','Tournaments')}${tab('profile','Profile')}</nav>
-  </div></header>
-  ${S.authMode==='dev'?'<div class="demo-note">Development mode: sign-in is simulated. Add 42 credentials to the server config to switch to real 42 sign-in.</div>':''}
-  <main id="main"></main>`;
-  ({ladder:viewLadder,log:viewLog,inbox:viewInbox,tourn:viewTourn,profile:viewProfile})[ui.view](document.getElementById('main'),me);
-}
-
-function viewLogin(){
-  const msg=ui.loginMsg?`<p class="status err">${esc(ui.loginMsg)}</p>`:'';
-  if(CFG.authMode==='42')return `<div class="login"><div class="login-card">
-    <div class="login-top"><h1><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</h1><p>Ratings, matches and tournaments for the campus table.</p></div>
-    <div class="login-body">${msg}<a class="btn-42" href="/auth/42" style="text-decoration:none"><span class="mark">42</span>Sign in with 42 intra</a>
-    <p class="note">We store your 42 login, name and the matches you play. Nothing else.</p></div></div></div>`;
-  return `<div class="login"><div class="login-card">
-    <div class="login-top"><h1><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</h1><p>Ratings, matches and tournaments for the campus table.</p></div>
-    <div class="login-body">${msg}<p class="note">Development mode: 42 sign-in isn't configured yet, so pick a test account.</p>
-      <div class="pick">${(ui.devUsers||[]).map(u=>`<button data-act="devlogin" data-pid="${u.id}"><b>${esc(u.name)}</b><span>${esc(u.login)}</span></button>`).join('')||'<p class="empty">Loading accounts…</p>'}</div>
-    </div></div></div>`;
-}
-
-function viewLadder(main,me){
-  const rk=rankOf(me.id),list=ranked();
-  if(ui.sort==='points')list.sort((a,b)=>b.pts-a.pts||b.r-a.r);
-  const inc=incoming(me.id).length;
-  main.innerHTML=`<section class="panel">
-    <div class="head-row"><div><h2>${esc(S.season)} ladder</h2><p class="lede">Rating measures skill (Glicko-2) and can go down. Season points reward playing and reset each season.</p></div>
-      <div class="seg" role="group" aria-label="Sort by"><button data-act="sort" data-sort="rating" aria-pressed="${ui.sort==='rating'}">Rating</button><button data-act="sort" data-sort="points" aria-pressed="${ui.sort==='points'}">Season points</button></div></div>
-    <div class="stats">
-      <div class="stat"><span class="k">Your rank</span><span class="v">${rk?'#'+rk:'–'} <small>of ${list.length}</small></span></div>
-      <div class="stat"><span class="k">Rating</span><span class="v">${Math.round(me.r)} <small>±${Math.round(me.rd)}</small></span></div>
-      <div class="stat"><span class="k">Season points</span><span class="v">${me.pts}</span></div>
-      <div class="stat"><span class="k">Record</span><span class="v">${me.w}–${me.l}</span></div>
-    </div>
-    ${inc?`<div class="actions"><button class="btn btn-sm" data-act="nav" data-view="inbox">${inc} result${inc>1?'s':''} waiting for your confirmation</button></div>`:''}
-    ${list.length?`<div class="tbl-wrap"><table>
-      <thead><tr><th>#</th><th>Player</th><th class="r">Rating</th><th class="r">W–L</th><th>Last 5</th><th class="r">Points</th></tr></thead>
-      <tbody>${list.map((p,i)=>{const f=myMatches(p.id).slice(0,5).reverse();
-        return `<tr class="${p.id===me.id?'me':''}"><td class="rank">${i+1}</td><td>${nameBtn(p)}</td>
-        <td class="r num">${Math.round(p.r)}${prov(p)?'<span class="chip" title="Rating still settling: few games or high uncertainty">prov.</span>':''}</td>
-        <td class="r num">${p.w}–${p.l}</td>
-        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td>
-        <td class="r num">${p.pts}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="empty">Nobody has played a rated match yet. <button class="link-btn" data-act="nav" data-view="log">Log the first one</button></p>'}
-  </section>`;
-}
-
-function setEditor(host,bo,prefix,labA,labB,onChange){
-  host.innerHTML=`<div class="set-head"><span>Set</span><span>${esc(labA)}</span><span>${esc(labB)}</span></div><div class="sets">${
-    Array.from({length:bo},(_,i)=>`<div class="set-row"><span class="sn">Set ${i+1}</span>
-    <input id="${prefix}-a${i}" type="number" inputmode="numeric" min="0" max="99" aria-label="Set ${i+1}, ${esc(labA)}">
-    <input id="${prefix}-b${i}" type="number" inputmode="numeric" min="0" max="99" aria-label="Set ${i+1}, ${esc(labB)}"></div>`).join('')}</div>`;
-  const need=Math.ceil(bo/2);
-  function read(){
-    const sets=[];let err='',wa=0,wb=0,done=false;
-    for(let i=0;i<bo;i++){
-      const ia=host.querySelector(`#${prefix}-a${i}`),ib=host.querySelector(`#${prefix}-b${i}`);
-      ia.classList.remove('bad');ib.classList.remove('bad');
-      const va=ia.value.trim(),vb=ib.value.trim();
-      if(done){ia.disabled=ib.disabled=true;ia.value=ib.value='';continue}
-      ia.disabled=ib.disabled=false;
-      if(!va&&!vb)continue;
-      if(!va||!vb){err=err||`Set ${i+1}: enter both scores.`;continue}
-      const x=+va,y=+vb;
-      if(!validSet(x,y)){ia.classList.add('bad');ib.classList.add('bad');err=err||`Set ${i+1}: ${x}–${y} isn't a valid set. Play to 11, win by 2.`;continue}
-      sets.push([x,y]);x>y?wa++:wb++;
-      if(wa===need||wb===need)done=true;
-    }
-    return{sets,err,wa,wb,decided:done&&!err};
-  }
-  host.addEventListener('input',()=>onChange(read()));
-  return read;
-}
-
-function viewLog(main,me){
-  const others=S.players.filter(p=>p.id!==me.id).sort((a,b)=>a.name.localeCompare(b.name));
-  main.innerHTML=`<section class="panel">
-    <div><h2>Log a match</h2><p class="lede">Your opponent confirms the result before any rating changes. If they don't respond, it confirms itself after ${S.autoConfirmHours} hours.</p></div>
-    <div class="field"><label for="opp">Opponent</label><select id="opp"><option value="">Choose a player…</option>${others.map(p=>`<option value="${p.id}" ${String(ui.opp)===String(p.id)?'selected':''}>${esc(p.name)} (${esc(p.login)}) · ${Math.round(p.r)}</option>`).join('')}</select></div>
-    <div class="field"><span class="lbl">Format</span><div class="seg" role="group" aria-label="Format"><button data-act="bo" data-bo="3" aria-pressed="${ui.bo===3}">Best of 3</button><button data-act="bo" data-bo="5" aria-pressed="${ui.bo===5}">Best of 5</button></div></div>
-    <div id="pred"></div><div id="sets"></div>
-    <div id="status" class="status" aria-live="polite"></div>
-    <div class="actions"><button id="send" class="btn btn-primary" disabled>Send for confirmation</button></div>
-  </section>`;
-  const sel=main.querySelector('#opp'),pred=main.querySelector('#pred'),st=main.querySelector('#status'),send=main.querySelector('#send');
-  let state={sets:[],decided:false,err:''};
-  function upd(){
-    const o=ui.opp&&P(ui.opp);
-    if(o){const c=winChance(me,o),w=glicko(me,o,1).r-me.r,l=glicko(me,o,0).r-me.r;
-      pred.innerHTML=`<div class="pred"><span>Win chance <b>${Math.round(c*100)}%</b></span><span>If you win <b class="up">${fmtD(w)}</b></span><span>If you lose <b class="down">${fmtD(l)}</b></span></div>`}
-    else pred.innerHTML='';
-    if(state.err){st.className='status err';st.textContent=state.err}
-    else if(state.decided){st.className='status ok';st.textContent=state.wa>state.wb?`You win ${state.wa}–${state.wb}.`:`${o?o.name.split(' ')[0]:'They'} win ${state.wb}–${state.wa}.`}
-    else{st.className='status';st.textContent=state.sets.length?`Score so far ${state.wa}–${state.wb}.`:''}
-    send.disabled=!(o&&state.decided);
-  }
-  const read=setEditor(main.querySelector('#sets'),ui.bo,'lg','You','Opponent',s=>{state=s;upd()});
-  sel.addEventListener('change',()=>{ui.opp=sel.value;upd()});
-  send.addEventListener('click',()=>act(async()=>{
-    const o=P(ui.opp);if(!o||!state.decided)return;
-    send.disabled=true;
-    try{await api('/api/matches',{opponentId:o.id,bestOf:ui.bo,sets:state.sets})}finally{send.disabled=false}
-    ui.opp='';ui.view='inbox';await refresh();toast(`Sent to ${o.name} for confirmation.`);
-  }));
-  state=read();upd();
-}
-
-function viewInbox(main,me){
-  const inc=incoming(me.id).sort((a,b)=>b.t-a.t),out=outgoing(me.id).sort((a,b)=>b.t-a.t);
-  const disp=S.matches.filter(m=>m.status==='disputed').sort((a,b)=>b.t-a.t);
-  const left=m=>{const h=Math.max(0,Math.ceil((m.created+S.autoConfirmHours*36e5-Date.now())/36e5));return `confirms itself in ${h}h`};
-  const line=(body,actions)=>`<div class="item"><div class="main">${body}</div>${actions?`<div class="actions">${actions}</div>`:''}</div>`;
-  main.innerHTML=`<section class="panel"><div><h2>Needs your confirmation</h2><p class="lede">Check the score. Confirming updates both ratings. If it's wrong, dispute it and log it again together.</p></div>
-    <div class="list">${inc.length?inc.map(m=>{const o=P(m.a),mine=setsFor(m,me.id),[a,b]=tally(mine),won=m.w===me.id;
-      return line(`<span><b>${esc(o.name)}</b> logged a ${won?'win for you':'loss for you'} <span class="chip ${won?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · best of ${m.bo} · ${ago(m.created)} · ${left(m)}</span>`,
-      `<button class="btn btn-good btn-sm" data-act="confirm" data-mid="${m.id}">Confirm</button><button class="btn btn-sm" data-act="dispute" data-mid="${m.id}">Dispute</button>`)}).join(''):'<p class="empty">Nothing to confirm.</p>'}</div></section>
-  <section class="panel"><h3>Waiting on your opponent</h3><div class="list">${out.length?out.map(m=>{const o=P(m.b),[a,b]=tally(m.sets);
-      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(m.sets)}</span> · sent ${ago(m.created)} · ${left(m)}</span>`,
-      `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}<button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`)}).join(''):'<p class="empty">No results waiting. <button class="link-btn" data-act="nav" data-view="log">Log a match</button></p>'}</div></section>
-  ${disp.length?`<section class="panel"><h3>Disputed</h3><div class="list">${disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id);
-      return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip warn">Disputed</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · no rating change</span>`)}).join('')}</div></section>`:''}`;
-}
-
-function viewProfile(main,me){
-  const p=P(ui.pid||me.id),ms=myMatches(p.id),rk=rankOf(p.id);
-  const h=[{r:1500},...p.hist].slice(-41);
-  let chart='<p class="empty">No rated games yet.</p>';
-  if(h.length>1){
-    const W=640,H=200,L=44,Rt=12,T=12,B=26,rs=h.map(x=>x.r);
-    const lo=Math.floor((Math.min(...rs)-20)/50)*50,hi=Math.ceil((Math.max(...rs)+20)/50)*50;
-    const X=i=>L+i*(W-L-Rt)/(h.length-1),Y=r=>T+(hi-r)*(H-T-B)/(hi-lo);
-    const ticks=[];for(let v=lo;v<=hi;v+=(hi-lo)>200?100:50)ticks.push(v);
-    const pts=h.map((x,i)=>`${X(i).toFixed(1)},${Y(x.r).toFixed(1)}`);
-    chart=`<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating over the last ${h.length-1} games, now ${Math.round(p.r)}">
-      ${ticks.map(v=>`<line x1="${L}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${v}</text>`).join('')}
-      <polygon points="${L},${H-B} ${pts.join(' ')} ${X(h.length-1)},${H-B}" fill="var(--table)" opacity=".12"/>
-      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--table)" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="${X(h.length-1)}" cy="${Y(p.r)}" r="5" fill="var(--ball)" stroke="var(--surface)" stroke-width="2"/>
-      <text x="${L}" y="${H-6}" font-size="11" fill="var(--muted)">${h.length-1} games ago</text><text x="${W-Rt}" y="${H-6}" font-size="11" fill="var(--muted)" text-anchor="end">now</text>
-    </svg></div>`;
-  }
-  const isMe=p.id===me.id;
-  main.innerHTML=`<section class="panel">
-    <div class="head-row"><div><h2>${esc(p.name)}${isMe?' <span class="chip">you</span>':''}</h2><p class="lede num">${esc(p.login)}</p></div>
-    ${!isMe?`<button class="btn btn-sm" data-act="challenge" data-pid="${p.id}">Log a match vs ${esc(p.name.split(' ')[0])}</button>`:''}</div>
-    <div class="stats">
-      <div class="stat"><span class="k">Rank</span><span class="v">${rk?'#'+rk:'–'}</span></div>
-      <div class="stat"><span class="k">Rating</span><span class="v">${Math.round(p.r)} <small>±${Math.round(p.rd)}</small></span></div>
-      <div class="stat"><span class="k">Record</span><span class="v">${p.w}–${p.l}</span></div>
-      <div class="stat"><span class="k">Season points</span><span class="v">${p.pts}</span></div>
-      ${!isMe?`<div class="stat"><span class="k">Your win chance</span><span class="v">${Math.round(winChance(me,p)*100)}%</span></div>`:''}
-    </div>
-    <h3>Rating history</h3>${chart}
-  </section>
-  <section class="panel"><h3>Recent matches</h3><div class="list">${ms.slice(0,12).map(m=>{const o=P(opp(m,p.id)),won=m.w===p.id,s=setsFor(m,p.id),[a,b]=tally(s),t=m.tourn&&S.tournaments.find(x=>x.id===m.tourn);
-    const d=m.delta?m.delta[p.id]:0;
-    return `<div class="item"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}</span>
-      <span class="sub"><span class="score">${fmtSets(s)}</span> · ${t?esc(t.name)+' · ':''}${ago(m.t)}</span></div>
-      <span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span></div>`}).join('')||'<p class="empty">No matches yet.</p>'}</div></section>`;
-}
-
-function canReport(t,m){return S.isAdmin||[m.a,m.b,t.createdBy].includes(S.me)}
-function viewTourn(main,me){
-  if(!S.tournaments.some(x=>x.id===ui.tid))ui.tid=(S.tournaments.find(t=>t.status==='live')||S.tournaments[0]||{}).id||null;
-  const t=S.tournaments.find(x=>x.id===ui.tid);
-  const picker=S.tournaments.map(x=>`<button class="tpick" data-act="tsel" data-tid="${x.id}" aria-pressed="${x.id===ui.tid}"><b>${esc(x.name)}</b><span>${x.seeds.length} players · ${x.status==='done'?'finished':'in progress'}</span></button>`).join('');
-  let bracket='';
-  if(t){
-    const seedNo=id=>t.seeds.indexOf(id)+1;
-    bracket=`<section class="panel"><div><h2>${esc(t.name)}</h2><p class="lede">Single elimination, best of ${t.bo}, seeded by rating. Organised by ${esc(P(t.createdBy).name)}. Results count toward the ladder.</p></div>
-      ${t.status==='done'?`<div class="pred"><span>Champion <b>${esc(P(t.champion).name)}</b></span>${t.awards.map(a=>`<span>${esc(P(a.id).name.split(' ')[0])} <b class="up">+${a.n}</b> pts (${a.why})</span>`).join('')}</div>`:''}
-      <div class="bracket">${t.rounds.map((rd,r)=>`<div class="round"><h3>${roundName(t,r)}</h3>${rd.map((m,k)=>{
-        const slot=(id,i)=>{if(!id)return `<div class="slot lost"><span><span class="sd"></span>${m.bye&&i===1?'Bye':'TBD'}</span></div>`;
-          const cls=m.w?(m.w===id?'won':'lost'):'';const ss=m.sets?m.sets.filter(s=>i===0?s[0]>s[1]:s[1]>s[0]).length:'';
-          return `<div class="slot ${cls}"><span><span class="sd">${seedNo(id)}</span>${esc(P(id).name)}</span><span class="num">${m.bye?'':ss}</span></div>`};
-        const ready=m.a&&m.b&&!m.w;
-        return `<div class="bm">${slot(m.a,0)}${slot(m.b,1)}${ready?`<div class="foot"><span>Ready to play</span>${canReport(t,m)?`<button class="btn btn-sm" data-act="report" data-r="${r}" data-k="${k}">Enter result</button>`:''}</div>`:m.sets?`<div class="foot"><span class="score">${fmtSets(m.sets)}</span></div>`:''}</div>`}).join('')}</div>`).join('')}</div></section>`;
-  }
-  const players=ranked().concat(S.players.filter(p=>games(p)===0));
-  main.innerHTML=`${S.tournaments.length?`<div class="tlist" role="group" aria-label="Tournaments">${picker}</div>`:''}${bracket}
-  <section class="panel"><div><h3>New tournament</h3><p class="lede">Pick at least 3 players. Top seeds get byes when the field isn't a power of two.</p></div>
-    <div class="field"><label for="tname">Name</label><input id="tname" type="text" placeholder="e.g. Lunch Break Cup" maxlength="60"></div>
-    <div class="checks">${players.map(p=>`<label><input type="checkbox" class="tchk" value="${p.id}" id="tc-${p.id}">${esc(p.name)}<span>${Math.round(p.r)}</span></label>`).join('')}</div>
-    <div class="actions"><button class="btn btn-primary" data-act="tcreate">Create bracket</button></div></section>`;
-}
-
-function openReport(r,k){
-  const t=S.tournaments.find(x=>x.id===ui.tid),m=t.rounds[r][k],A=P(m.a),B=P(m.b);
-  const root=document.getElementById('modal-root');
-  root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mh">
-    <h3 id="mh">${esc(roundName(t,r))}: ${esc(A.name)} vs ${esc(B.name)}</h3>
-    <div id="msets"></div><div id="mst" class="status" aria-live="polite"></div>
-    <div class="actions"><button class="btn btn-primary" id="msave" disabled>Save result</button><button class="btn" data-act="mclose">Cancel</button></div></div></div>`;
-  let st={};const mst=root.querySelector('#mst'),ms=root.querySelector('#msave');
-  setEditor(root.querySelector('#msets'),t.bo,'tm',A.name.split(' ')[0],B.name.split(' ')[0],s=>{st=s;
-    mst.className='status '+(s.err?'err':s.decided?'ok':'');
-    mst.textContent=s.err||(s.decided?`${(s.wa>s.wb?A:B).name} wins ${Math.max(s.wa,s.wb)}–${Math.min(s.wa,s.wb)}.`:'');
-    ms.disabled=!s.decided});
-  ms.addEventListener('click',()=>act(async()=>{
-    if(!st.decided)return;ms.disabled=true;
-    let res;try{res=await api(`/api/tournaments/${t.id}/results`,{round:r,slot:k,sets:st.sets})}catch(e){ms.disabled=false;throw e}
-    root.innerHTML='';await refresh();
-    toast(res.finished?`${P(res.winner).name} wins ${t.name}!`:'Result saved. Ratings updated.');
-  }));
-  root.querySelector('#tm-a0').focus();
-}
-
-async function loadDevUsers(){if(CFG.authMode!=='dev')return;try{ui.devUsers=await api('/api/dev-users')}catch(e){ui.loginMsg=e.message}render()}
-
-/* ---------- events ---------- */
-document.addEventListener('click',e=>{
-  const el=e.target.closest('[data-act]');if(!el)return;
-  const a=el.dataset.act;
-  if(a==='mclose-bg'&&e.target!==el)return;
-  switch(a){
-    case 'devlogin':act(async()=>{await api('/auth/dev-login',{userId:Number(el.dataset.pid)});ui.view=el.dataset.then||'ladder';ui.pid=null;await refresh();if(el.dataset.then)toast(`Signed in as ${P(S.me).login}.`)});break;
-    case 'signout':act(async()=>{await api('/auth/logout',{});S=null;render();loadDevUsers()});break;
-    case 'nav':ui.view=el.dataset.view;if(ui.view==='profile')ui.pid=null;render();window.scrollTo(0,0);break;
-    case 'player':ui.view='profile';ui.pid=Number(el.dataset.pid);render();window.scrollTo(0,0);break;
-    case 'challenge':ui.view='log';ui.opp=el.dataset.pid;render();break;
-    case 'sort':ui.sort=el.dataset.sort;render();break;
-    case 'bo':ui.bo=+el.dataset.bo;render();break;
-    case 'confirm':act(async()=>{const r=await api(`/api/matches/${el.dataset.mid}/confirm`,{});await refresh();toast(`Confirmed. Your rating ${fmtD(r.delta||0)}, +${r.pts||0} season points.`)});break;
-    case 'dispute':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{});await refresh();toast('Marked as disputed. No ratings changed.')});break;
-    case 'withdraw':act(async()=>{await api(`/api/matches/${el.dataset.mid}/withdraw`,{});await refresh();toast('Result withdrawn.')});break;
-    case 'tsel':ui.tid=Number(el.dataset.tid);render();break;
-    case 'report':openReport(+el.dataset.r,+el.dataset.k);break;
-    case 'mclose':case 'mclose-bg':document.getElementById('modal-root').innerHTML='';break;
-    case 'tcreate':act(async()=>{
-      const ids=[...document.querySelectorAll('.tchk:checked')].map(x=>Number(x.value)),name=document.getElementById('tname').value.trim();
-      const r=await api('/api/tournaments',{name,playerIds:ids});ui.tid=r.id;await refresh();window.scrollTo(0,0);toast('Bracket created.')});break;
-  }
-});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal-root').innerHTML=''});
-
-(async()=>{
-  const q=new URLSearchParams(location.search).get('login');
-  if(q==='failed')ui.loginMsg='42 sign-in did not complete. Try again.';
-  if(q==='campus')ui.loginMsg='This ladder is only open to students of this campus.';
-  if(q)history.replaceState(null,'',location.pathname);
-  try{CFG=await api('/api/config')}catch(_){}
-  await refresh();
-  if(!S)loadDevUsers();
-  setInterval(()=>{if(S&&!document.querySelector('.overlay')&&ui.view!=='log'&&ui.view!=='tourn')refresh()},60e3);
-})();
-})();
-</script>
+<script src="/app.js"></script>
 </body>
 </html>

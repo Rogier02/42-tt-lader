@@ -2,7 +2,7 @@
 (()=>{
 const SC=173.7178, TAU=0.5, DAY=864e5;
 let S=null, CFG={authMode:'dev',season:''};
-const ui={view:'home',ptab:'profile',lview:'players',pid:null,sort:'rating',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
+const ui={view:'home',ptab:'profile',lview:'players',pid:null,sort:'rating',dir:'desc',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
 const COAL_COLORS={Vela:'#d23f36',Cetus:'#2e6fd6',Pyxis:'#8a4fd3'};
 const TEMPLATES=[
   {id:'quick',name:'Quick',desc:'Best of 3 every round',stages:{early:3,qf:3,sf:3,final:3}},
@@ -226,19 +226,23 @@ function matchesTab(p,isMe){
 function viewLadder(main,me){
   const seg=`<div class="seg" role="group" aria-label="Show"><button data-act="lview" data-v="players" aria-pressed="${ui.lview==='players'}">Players</button><button data-act="lview" data-v="coalitions" aria-pressed="${ui.lview==='coalitions'}">Coalitions</button></div>`;
   if(ui.lview==='coalitions')return viewCoalitions(main,me,seg);
-  const list=ranked();
-  if(ui.sort==='points')list.sort((a,b)=>b.pts-a.pts||b.r-a.r);
+  // Click a column title to sort by it; click again to flip the direction.
+  const winPct=p=>games(p)?p.w/games(p):0;
+  const by={name:(a,b)=>a.name.localeCompare(b.name),rating:(a,b)=>a.r-b.r,pts:(a,b)=>a.pts-b.pts||a.r-b.r,wl:(a,b)=>winPct(a)-winPct(b)||games(a)-games(b)};
+  const list=ranked().sort((a,b)=>(ui.dir==='asc'?1:-1)*by[ui.sort](a,b));
+  const th=(k,label,cls='',title='')=>{const on=ui.sort===k;
+    return `<th class="${cls}" ${on?`aria-sort="${ui.dir==='asc'?'ascending':'descending'}"`:''}><button class="sort ${on?'on':''}" data-act="lsort" data-k="${k}" ${title?`title="${title}"`:''}>${label}<span class="arrow" aria-hidden="true">${on?(ui.dir==='asc'?'▲':'▼'):'↕'}</span></button></th>`};
   main.innerHTML=`<section class="panel">
     <div class="head-row"><div><h2>${esc(S.season)} ladder</h2><p class="lede">Rating measures skill (Glicko-2) and can go down. Season points reward playing and reset each season.</p></div>${seg}</div>
-    <div class="head-row"><span class="lbl">Sort by</span><div class="seg" role="group" aria-label="Sort by"><button data-act="sort" data-sort="rating" aria-pressed="${ui.sort==='rating'}">Rating</button><button data-act="sort" data-sort="points" aria-pressed="${ui.sort==='points'}">Season points</button></div></div>
     ${list.length?`<div class="tbl-wrap"><table>
-      <thead><tr><th>#</th><th>Player</th><th class="r">Rating</th><th class="r">W–L</th><th>Last 5</th><th class="r">Points</th></tr></thead>
+      <thead><tr><th>#</th>${th('name','Player')}${th('rating','Rating','r','Skill rating (Glicko-2). Never resets.')}${th('pts','Season pts','r','Points earned this season. Resets every season.')}${th('wl','W–L','r','All-time record, sorted by win percentage')}<th>Last 5</th></tr></thead>
       <tbody>${list.map((p,i)=>{const f=matchesOf(p.id).slice(0,5).reverse();
         return `<tr class="${p.id===me.id?'me':''}"><td class="rank">${i+1}</td><td>${nameBtn(p)}</td>
         <td class="r num">${Math.round(p.r)}${prov(p)?'<span class="chip" title="Rating still settling: fewer than 5 games">prov.</span>':''}</td>
+        <td class="r num">${p.pts}</td>
         <td class="r num">${p.w}–${p.l}</td>
-        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td>
-        <td class="r num">${p.pts}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="empty">Nobody has played a rated match yet.</p>'}
+        <td><span class="form" aria-label="Last five results">${f.map(m=>`<span class="dot ${m.w===p.id?'w':'l'}" title="${m.w===p.id?'Win':'Loss'} vs ${esc(P(opp(m,p.id)).name)}"></span>`).join('')}</span></td></tr>`}).join('')}</tbody></table></div>
+    <p class="note">Click a column title to sort. Click it again to reverse the order.</p>`:'<p class="empty">Nobody has played a rated match yet.</p>'}
   </section>`;
 }
 function viewCoalitions(main,me,seg){
@@ -605,7 +609,7 @@ document.addEventListener('click',e=>{
     case 'newmatch':openNewMatch({opp:el.dataset.pid||'',mode:el.dataset.mode||'log',bo:el.dataset.bo?Number(el.dataset.bo):undefined});break;
     case 'nm-mode':nm.mode=el.dataset.mode;nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
     case 'nm-bo':nm.bo=Number(el.dataset.bo);nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
-    case 'sort':ui.sort=el.dataset.sort;render();break;
+    case 'lsort':{const k=el.dataset.k;if(ui.sort===k)ui.dir=ui.dir==='asc'?'desc':'asc';else{ui.sort=k;ui.dir=k==='name'?'asc':'desc'}render();break}
     case 'scope':ui.scope=el.dataset.scope;render();break;
     case 'confirm':act(async()=>{const r=await api(`/api/matches/${el.dataset.mid}/confirm`,{});await refresh();toast(`Confirmed. Your rating ${fmtD(r.delta||0)}, +${r.pts||0} season points.`)});break;
     case 'dispute':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{});await refresh();toast('Marked as disputed. No ratings changed.')});break;

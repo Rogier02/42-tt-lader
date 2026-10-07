@@ -317,6 +317,12 @@ details.season>summary:hover .season-name b{text-decoration:underline;text-under
 .ch-pair .vs{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em}
 .ch-pair .w{font-weight:600}
 .ch-pair .chip:last-child{margin-left:auto}
+/* ---- sortable columns ---- */
+th .sort{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+th .sort:hover,th .sort.on{color:var(--ink)}
+th .sort .arrow{font-size:.7rem;opacity:.45}
+th .sort.on .arrow{opacity:1;color:var(--ball)}
+th.r .sort{flex-direction:row}
 </style>
 </head>
 <body>

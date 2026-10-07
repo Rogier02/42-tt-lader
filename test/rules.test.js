@@ -45,3 +45,19 @@ test('coalition points: upset tiers and diminishing returns per pair', () => {
   assert.equal(pts(100, 1), 9);
   assert.equal(pts(300, 4), 1, 'after 3 matches vs the same player in a week, any win scores 1');
 });
+
+test('longer matches move ratings more', async () => {
+  const { open } = require('../server/db');
+  const { compute } = require('../server/standings');
+  const gain = (bo, sets) => {
+    const db = open(':memory:');
+    db.prepare("INSERT INTO users (login, name, created_at) VALUES ('a','A',0),('b','B',0)").run();
+    db.prepare(`INSERT INTO matches (reporter_id, opponent_id, best_of, sets, winner_id, status, created_at, confirmed_at) VALUES (1, 2, ?, ?, 1, 'confirmed', 1, 1)`).run(bo, JSON.stringify(sets));
+    const m = [...compute(db, 0).meta.values()][0];
+    assert.equal(m.before[1], 1500);
+    return m.delta[1];
+  };
+  const g3 = gain(3, [[11, 5], [11, 5]]), g5 = gain(5, [[11, 5], [11, 5], [11, 5]]), g7 = gain(7, [[11, 5], [11, 5], [11, 5], [11, 5]]);
+  assert.ok(g3 < g5 && g5 < g7, `${g3} < ${g5} < ${g7}`);
+  assert.ok(Math.abs(g7 / g5 - 1.25) < 1e-9 && Math.abs(g3 / g5 - 0.75) < 1e-9);
+});

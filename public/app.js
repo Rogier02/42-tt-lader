@@ -163,7 +163,7 @@ function matchRow(m,pid){
   const o=P(opp(m,pid)),won=m.w===pid,s=setsFor(m,pid),[a,b]=tally(s),t=m.tourn&&tById(m.tourn),d=m.delta?m.delta[pid]:0,pts=m.pts?m.pts[pid]:0;
   return `<div class="mrow"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}${m.matchup?` <span class="chip ch">${S.matchupRules?S.matchupRules.multiplier:3}× challenger</span>`:''}</span>
     <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo}${t?` · <button class="link-btn" data-act="topen" data-tid="${t.id}">${esc(t.name)}</button>`:''} · ${ago(m.t)}</span></div>
-    <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${inSeason(m)?`<span class="pts">+${pts} pts${m.coalPts&&m.w===pid?` · <span class="coal-dot" style="--c:${esc(colorOf(m.coalition))}"></span>+${m.coalPts} ${esc(m.coalition)}`:''}</span>`:''}</div></div>`;
+    <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${m.before?`<span class="pts num" title="Rating before and after this match">${Math.round(m.before[pid])} → ${Math.round(m.before[pid]+d)}</span>`:''}${inSeason(m)&&m.coalPts&&m.w===pid?`<span class="pts"><span class="coal-dot" style="--c:${esc(colorOf(m.coalition))}"></span>+${m.coalPts} ${esc(m.coalition)}</span>`:''}</div></div>`;
 }
 const coalOf=name=>(S.coalitions||[]).find(c=>c.name===name);
 function profileTabs(p,count){
@@ -357,6 +357,7 @@ function renderNewMatch(){
     <div class="seg" role="group" aria-label="What do you want to do"><button data-act="nm-mode" data-mode="log" aria-pressed="${nm.mode==='log'}">Log a result</button><button data-act="nm-mode" data-mode="challenge" aria-pressed="${nm.mode==='challenge'}">Challenge</button></div>
     <div class="field"><label for="nm-opp">Opponent</label><select id="nm-opp"><option value="">Choose a player…</option>${others.map(p=>`<option value="${p.id}" ${String(nm.opp)===String(p.id)?'selected':''}>${esc(p.name)} (${esc(p.login)}) · ${Math.round(p.r)}${accepted.some(c=>c.from===p.id||c.to===p.id)?' · challenge accepted':''}${isChallenger(p.id)?' · your challenger, '+S.matchupRules.multiplier+'× points':''}</option>`).join('')}</select></div>
     <div class="field"><span class="lbl">Format</span><div class="seg" role="group" aria-label="Format">${[3,5,7].map(b=>`<button data-act="nm-bo" data-bo="${b}" aria-pressed="${nm.bo===b}">Best of ${b}</button>`).join('')}</div></div>
+    <p class="note">Longer matches move your rating more: best of 3 counts ×${(S.lengthWeight||{})[3]||0.75}, best of 5 ×${(S.lengthWeight||{})[5]||1}, best of 7 ×${(S.lengthWeight||{})[7]||1.25}.</p>
     ${nm.bo===7?BO7_NOTE:''}
     <div id="nm-pred"></div>
     ${nm.mode==='log'?`<div id="nm-sets"></div><p class="note">Your opponent confirms the result before ratings change. If they don't respond, it confirms itself after ${S.autoConfirmHours} hours.</p>`:
@@ -368,7 +369,7 @@ function renderNewMatch(){
   let state={sets:[],decided:false,err:''};
   function upd(){
     const o=nm.opp&&P(nm.opp);
-    if(o){const c=winChance(me,o),w=glicko(me,o,1).r-me.r,l=glicko(me,o,0).r-me.r;
+    if(o){const lw=(S.lengthWeight||{})[nm.bo]||1,c=winChance(me,o),w=lw*(glicko(me,o,1).r-me.r),l=lw*(glicko(me,o,0).r-me.r);
       pred.innerHTML=`<div class="pred"><span>Win chance <b>${Math.round(c*100)}%</b></span><span>If you win <b class="up">${fmtD(w)}</b></span><span>If you lose <b class="down">${fmtD(l)}</b></span></div>`}
     else pred.innerHTML='';
     if(nm.mode==='challenge'){send.disabled=!o;st.textContent='';return}

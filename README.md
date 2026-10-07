@@ -57,7 +57,7 @@ You can also set these optional values:
 
 ### Rules
 
-- **Rating:** [Glicko-2](http://www.glicko.net/glicko/glicko2.pdf) with τ = 0.5. Each match is treated as its own rating period, and the rating deviation never drops below 45.
+- **Rating:** [Glicko-2](http://www.glicko.net/glicko/glicko2.pdf) with τ = 0.5. Each match is treated as its own rating period, and the rating deviation never drops below 45. Longer matches move ratings more: a best of 3 counts ×0.75, a best of 5 ×1 and a best of 7 ×1.25. Each match in a player's history shows their rating before and after it.
 - **Season points:**
   - a win earns 3, plus 2 more for beating someone rated 50 or more points higher
   - a loss earns 1

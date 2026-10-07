@@ -1,7 +1,7 @@
 const path = require('node:path');
 const crypto = require('node:crypto');
 const Fastify = require('fastify');
-const { compute, COALITION_POINTS } = require('./standings');
+const { compute, COALITION_POINTS, LENGTH_WEIGHT } = require('./standings');
 const matchups = require('./matchups');
 const { assignMissing } = require('./coalitions');
 const { ensureSeason, currentSeason, seasonRoutes } = require('./routes/seasons');
@@ -156,7 +156,7 @@ function buildApp(config, db) {
     const matches = rows.map((m) => {
       const x = st.meta.get(m.id) || {};
       return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets: JSON.parse(m.sets), w: m.winner_id, status: m.status,
-        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
+        t: m.confirmed_at || m.created_at, created: m.created_at, tourn: m.tournament_id, before: x.before, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
     });
     const setsById = new Map(rows.map((m) => [m.id, JSON.parse(m.sets)]));
 
@@ -189,7 +189,7 @@ function buildApp(config, db) {
       .map((s) => ({ id: s.id, name: s.name, startsAt: s.starts_at, endsAt: s.ends_at, prize: s.prize, results: JSON.parse(s.results || 'null') }));
     return { me: me.id, isAdmin, authMode: config.authMode, season: cur.name, seasonStart: cur.starts_at,
       currentSeason: { id: cur.id, name: cur.name, startsAt: cur.starts_at, plannedEnd: cur.planned_end, prize: cur.prize }, seasons,
-      autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS,
+      autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS, lengthWeight: LENGTH_WEIGHT,
       players, matches, tournaments, challenges, ...matchupState(me) };
   });
 

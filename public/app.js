@@ -190,14 +190,17 @@ function viewActivity(main,me){
   </section>`;
 }
 
+// The test copy wears a badge (and a tab title prefix) so it's never mistaken for the live one.
+const envBadge=()=>((S&&S.appEnv)||CFG.appEnv)==='test'?'<span class="env-badge" title="This is the test copy. Nothing here affects the live ladder.">Test</span>':'';
 /* ---------- shell ---------- */
 function render(){
   const app=document.getElementById('app');
+  document.title=(((S&&S.appEnv)||CFG.appEnv)==='test'?'Test · ':'')+'42 Table Tennis Ladder';
   if(!S){app.innerHTML=viewLogin();return}
   const me=P(S.me),inc=inboxCount();
   const tab=(v,l,extra='')=>`<button class="tab" data-act="nav" data-view="${v}" ${ui.view===v||(v==='home'&&ui.view==='player'&&false)?'aria-current="page"':''}>${l}${extra}</button>`;
   app.innerHTML=`<header class="top"><div class="top-in">
-    <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p>
+    <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder${envBadge()}</p>
       <div class="top-actions"><button class="new-match" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>New match</button>
       <div class="who"><b>${esc(me.login)}</b>${S.isAdmin?' <span class="chip" style="color:inherit;border-color:currentColor">admin</span>':''}<button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div></div>
     <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('activity','Activity')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
@@ -212,7 +215,7 @@ function render(){
 
 function viewLogin(){
   const msg=ui.loginMsg?`<p class="status err">${esc(ui.loginMsg)}</p>`:'';
-  const top=`<div class="login-top"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p><h1>Who's next on the table?</h1><p>Ratings, matches, challengers and tournaments for everyone who plays at 42.</p></div>`;
+  const top=`<div class="login-top"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder${envBadge()}</p><h1>Who's next on the table?</h1><p>Ratings, matches, challengers and tournaments for everyone who plays at 42.</p></div>`;
   if(CFG.authMode==='42')return `<div class="login"><div class="login-card">${top}
     <div class="login-body">${msg}<a class="btn-42" href="/auth/42" style="text-decoration:none"><span class="mark">42</span>Sign in with 42 intra</a>
     <p class="note">We store your 42 login, name, coalition and the matches you play. Nothing else.</p></div></div></div>`;

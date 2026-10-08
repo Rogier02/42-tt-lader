@@ -10,7 +10,8 @@ const SESSION_DAYS = 30;
 const FT = 'https://api.intra.42.fr';
 
 function buildApp(config, db) {
-  const app = Fastify({ logger: config.logger ?? true, trustProxy: true });
+  const app = Fastify({ logger: config.logger ?? { level: config.logLevel }, trustProxy: true });
+  const SID = config.cookieName, STATE = `${config.cookieName}_state`;
   app.register(require('@fastify/cookie'), { secret: config.cookieSecret });
   app.register(require('@fastify/static'), { root: path.join(__dirname, '..', 'public') });
 
@@ -44,10 +45,10 @@ function buildApp(config, db) {
   function startSession(reply, userId) {
     const id = crypto.randomBytes(32).toString('hex');
     db.prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)').run(id, userId, now() + SESSION_DAYS * 864e5);
-    reply.setCookie('sid', id, { path: '/', httpOnly: true, sameSite: 'lax', secure, signed: true, maxAge: SESSION_DAYS * 86400 });
+    reply.setCookie(SID, id, { path: '/', httpOnly: true, sameSite: 'lax', secure, signed: true, maxAge: SESSION_DAYS * 86400 });
   }
   function currentUser(req) {
-    const raw = req.cookies.sid;
+    const raw = req.cookies[SID];
     if (!raw) return null;
     const { valid, value } = req.unsignCookie(raw);
     if (!valid) return null;
@@ -72,7 +73,7 @@ function buildApp(config, db) {
   app.get('/auth/42', async (req, reply) => {
     if (config.authMode !== '42') return fail(reply, 404, '42 sign-in is not configured.');
     const state = crypto.randomBytes(16).toString('hex');
-    reply.setCookie('oauth_state', state, { path: '/auth', httpOnly: true, sameSite: 'lax', secure, maxAge: 600 });
+    reply.setCookie(STATE, state, { path: '/auth', httpOnly: true, sameSite: 'lax', secure, maxAge: 600 });
     const q = new URLSearchParams({ client_id: config.ftClientId, redirect_uri: `${config.baseUrl}/auth/42/callback`, response_type: 'code', scope: 'public', state });
     return reply.redirect(`${FT}/oauth/authorize?${q}`);
   });
@@ -80,8 +81,8 @@ function buildApp(config, db) {
   app.get('/auth/42/callback', async (req, reply) => {
     if (config.authMode !== '42') return fail(reply, 404, '42 sign-in is not configured.');
     const { code, state } = req.query;
-    if (!code || !state || state !== req.cookies.oauth_state) return reply.redirect('/?login=failed');
-    reply.clearCookie('oauth_state', { path: '/auth' });
+    if (!code || !state || state !== req.cookies[STATE]) return reply.redirect('/?login=failed');
+    reply.clearCookie(STATE, { path: '/auth' });
     try {
       const tokenRes = await fetch(`${FT}/oauth/token`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -91,6 +92,8 @@ function buildApp(config, db) {
       const { access_token } = await tokenRes.json();
       const get = async (p) => { const r = await fetch(`${FT}${p}`, { headers: { authorization: `Bearer ${access_token}` } }); if (!r.ok) throw new Error(`${p} failed: ${r.status}`); return r.json(); };
       const me = await get('/v2/me');
+      const campusList = (me.campus || []).map((c) => `${c.name} (${c.id})`).join(', ') || 'none';
+      console.log(`42 sign-in: ${me.login}, campus: ${campusList}`);
       if (config.allowedCampusIds.length) {
         const campuses = (me.campus || []).map((c) => c.id);
         if (!campuses.some((id) => config.allowedCampusIds.includes(id))) return reply.redirect('/?login=campus');
@@ -140,13 +143,13 @@ function buildApp(config, db) {
   });
 
   app.post('/auth/logout', async (req, reply) => {
-    const raw = req.cookies.sid;
+    const raw = req.cookies[SID];
     if (raw) { const { valid, value } = req.unsignCookie(raw); if (valid) db.prepare('DELETE FROM sessions WHERE id = ?').run(value); }
-    reply.clearCookie('sid', { path: '/' });
+    reply.clearCookie(SID, { path: '/' });
     return { ok: true };
   });
 
-  app.get('/api/config', async () => ({ authMode: config.authMode }));
+  app.get('/api/config', async () => ({ authMode: config.authMode, appEnv: config.appEnv }));
 
   // ---------- state: everything the page needs in one call ----------
   app.get('/api/state', { preHandler: auth }, async (req) => {
@@ -188,7 +191,7 @@ function buildApp(config, db) {
     const cur = currentSeason(db);
     const seasons = db.prepare('SELECT * FROM seasons WHERE ends_at IS NOT NULL ORDER BY starts_at DESC').all()
       .map((s) => ({ id: s.id, name: s.name, startsAt: s.starts_at, endsAt: s.ends_at, prize: s.prize, results: JSON.parse(s.results || 'null') }));
-    return { me: me.id, isAdmin, authMode: config.authMode, season: cur.name, seasonStart: cur.starts_at,
+    return { me: me.id, isAdmin, authMode: config.authMode, appEnv: config.appEnv, season: cur.name, seasonStart: cur.starts_at,
       currentSeason: { id: cur.id, name: cur.name, startsAt: cur.starts_at, plannedEnd: cur.planned_end, prize: cur.prize }, seasons,
       autoConfirmHours: config.autoConfirmHours, requireApproval: config.requireApproval, coalitions: st.coalitions, coalitionRules: COALITION_POINTS, lengthWeight: LENGTH_WEIGHT,
       players, matches, tournaments, challenges, ...matchupState(me) };

@@ -2,43 +2,83 @@
 
 A rating ladder for the table tennis players at 42. Students sign in with their 42 account, log matches, climb the ladder, and run small knockout tournaments.
 
-## Run it locally
+## Two copies: test and live
 
-You need Node.js 22.13 or newer. Check your version with `node -v`.
+The app runs as two separate copies on your computer, each with its own database:
+
+| | Test | Live |
+|---|---|---|
+| Folder | this repo (`42-tt-ladder`) | `../42-tt-ladder-live` |
+| Git branch | `dev`, where you work | `main`, what's released |
+| Address | http://localhost:3000 | http://localhost:3001 |
+| Sign-in | simulated, pick any demo player | real 42 accounts |
+| Data | demo data, throw away any time | the real ladder, backed up daily |
+| Start with | `npm run dev` | `npm run live` |
+
+The test copy shows an orange **Test** badge, so you can always tell them apart.
+
+### First-time setup
+
+You need Node.js 22.13 or newer (`node -v`).
+
+1. **Commit your work and create the `dev` branch.**
+   ```bash
+   git add -A && git commit -m "Test and live copies"
+   git push
+   git checkout -b dev
+   git push -u origin dev
+   ```
+2. **Register the app on 42 intra.** Go to profile.intra.42.fr → Settings → API → *Register a new app*.
+   - Name: anything, for example "42 Table Tennis Ladder".
+   - Redirect URI: `http://localhost:3001/auth/42/callback`. Add `http://localhost:3000/auth/42/callback` on a second line if you ever want to try real sign-in on the test copy.
+   - Scopes: *public*.
+   - Then keep the app page open; you need its UID and SECRET.
+3. **Set up the live copy.** It asks for the UID, the SECRET and your 42 login (which makes you admin).
+   ```bash
+   npm install
+   npm run setup:live
+   ```
+4. **Release and start live.**
+   ```bash
+   npm run release
+   npm run live        # in its own terminal window; keep it open
+   ```
+5. Open http://localhost:3001 and sign in with 42. You're the first player and the admin.
+
+### Everyday work
 
 ```bash
-npm install
-npm run dev
+npm run dev                      # test copy at localhost:3000; restarts when you save a file
+# ...change things, try them...
+git add -A && git commit -m "What changed"
+npm run release                  # tests, then makes it live
 ```
 
-Then open http://localhost:3000.
+`npm run release` refuses to run with uncommitted changes or failing tests. It then:
+1. moves `main` up to `dev` and pushes both branches to GitHub
+2. backs up the live database
+3. installs the new version next to the old one
+4. switches live over; a running `npm run live` picks it up within seconds
 
-Without 42 credentials the app runs in **dev mode**. Sign-in is simulated, and an empty database is filled with demo data:
-- 14 players spread over the three coalitions
-- two finished seasons with frozen results, and a current season with a prize
-- about 80 matches
-- finished, live, open and awaiting-approval tournaments
-- open challenges
+| Command | What it does |
+|---|---|
+| `npm run rollback` | Switches live back to the previous release. The database is left as is. |
+| `npm run rollback -- --list` | Shows the releases on disk and which one is live. |
+| `npm run backup:live` | Makes a copy of the live database now. Copies are in `../42-tt-ladder-live/backups/`. |
+| `npm run setup:live` | Changes live settings, for example a renewed 42 app SECRET. Restart live afterwards. |
 
-In dev mode the first account, Sanne de Vries, is an admin, so you can try approving tournaments. To start over with fresh demo data, delete the `data/` folder.
+To start the test copy over with fresh demo data, delete its `data/` folder. In the demo data, Sanne de Vries is an admin.
 
 Run the tests with `npm test`.
 
-## Turn on real 42 sign-in
+### Live settings
 
-1. Go to profile.intra.42.fr, open **API**, and register a new app.
-2. Set the redirect URI to `<BASE_URL>/auth/42/callback`, for example `http://localhost:3000/auth/42/callback`.
-3. Copy `.env.example` to `.env` and fill in these values:
-   - `FT_CLIENT_ID` and `FT_CLIENT_SECRET` from the app you registered
-   - `COOKIE_SECRET`, which you can generate with `openssl rand -hex 32`
-   - `BASE_URL`
-4. Restart the server. The login screen now shows **Sign in with 42 intra**.
-
-You can also set these optional values:
-- `ALLOWED_CAMPUS_IDS` limits sign-in to students of your campus.
-- `ADMIN_LOGINS` lists the 42 logins of admins. Admins approve new tournaments and can manage any tournament. Put your own login here.
-- `REQUIRE_TOURNAMENT_APPROVAL=false` lets tournaments go live without approval.
-- `COALITIONS` sets the coalition names and their order. Each player's coalition is read from the 42 API when they sign in.
+`../42-tt-ladder-live/.env` holds the live settings. It's written by `npm run setup:live` and never goes into git. Besides the 42 credentials:
+- `ADMIN_LOGINS`: the 42 logins of admins. Admins approve tournaments, manage seasons and can manage any tournament.
+- `ALLOWED_CAMPUS_IDS`: only students of these campuses can sign in. The live log prints each player's campus id when they sign in, so check yours after your first sign-in.
+- `REQUIRE_TOURNAMENT_APPROVAL=false`: tournaments go live without approval.
+- `CHALLENGERS=false`: switches off the weekly challenger matchups.
+- `COALITIONS`: coalition names. Each player's coalition comes from the 42 API.
 
 ## How it works
 
@@ -91,13 +131,15 @@ You can also set these optional values:
   - The numbers are in `COALITION_POINTS` in `server/standings.js`.
   - Coalition team matches (2v2, 3v3) are a planned next step.
 
-## Deploying
+## Going online later
 
-A single small server is enough. The app is one Node process and one SQLite file.
+Live runs on `localhost`, so only your own computer can reach it. Putting it on a server uses the same setup:
+1. Clone the repo on the server.
+2. Run `npm run setup:live`. Choose `HOST=0.0.0.0` and set `BASE_URL` to the public address, for example `https://ladder.example.com`.
+3. Add that address's `/auth/42/callback` to the 42 app.
+4. Keep `npm run live` running with a service manager, such as systemd or pm2, behind HTTPS (Caddy is the simplest).
 
-- Set `HOST=0.0.0.0` and `BASE_URL=https://your-domain`, and put the server behind HTTPS. Most hosts handle HTTPS for you.
-- Keep `data/ladder.db` on a persistent disk and back it up regularly.
-- Update the redirect URI in your 42 app to match the new `BASE_URL`.
+The live database is one file, `data/ladder.db`. Moving it to the server moves the whole ladder.
 
 ## Privacy
 

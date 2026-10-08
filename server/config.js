@@ -24,6 +24,11 @@ function loadConfig(env = process.env) {
     // Weekly "A challenger approaches" matchups.
     matchupsEnabled: (env.CHALLENGERS || 'true').toLowerCase() !== 'false',
     coalitions: list(env.COALITIONS || 'Vela,Cetus,Pyxis'),
+    // "test" or "live". The test copy shows a Test badge so the two are never confused.
+    appEnv: env.APP_ENV || (authMode === '42' ? 'live' : 'test'),
+    // Test and live both run on localhost; separate cookie names keep their sign-ins apart.
+    cookieName: env.SESSION_COOKIE || `ttl_sid_${port}`,
+    logLevel: env.LOG_LEVEL || 'info',
   };
   if (!cfg.cookieSecret) {
     if (authMode === '42') throw new Error('COOKIE_SECRET must be set when 42 sign-in is enabled.');

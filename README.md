@@ -86,6 +86,7 @@ You can also set these optional values:
   - Players who finish their challenge can be drawn again for one bonus round that week, always against someone new.
   - Players can switch weekly challengers off on their profile.
   - The settings are in `MATCHUPS` in `server/matchups.js`.
+- **Activity:** a page listing every confirmed match by the day it was played: who played whom, the score and the time. Choose a day, 3 days or a week and step back through time. It shows the number of matches, the number of players, the most active player and the busiest day; the 3-day and week views have a bar per day.
 - **Seasons:** an admin ends the current season from Ladder → Coalitions. That freezes the final standings (winning coalition, its top scorers and the MVP) and starts the next season right away. Season points and the coalition race reset; ratings carry over. Admins can also set a season name, a planned end date and a prize, which players see above the race. Past seasons are listed in the season history.
   - The numbers are in `COALITION_POINTS` in `server/standings.js`.
   - Coalition team matches (2v2, 3v3) are a planned next step.

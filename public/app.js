@@ -2,7 +2,7 @@
 (()=>{
 const SC=173.7178, TAU=0.5, DAY=864e5;
 let S=null, CFG={authMode:'dev',season:''};
-const ui={view:'home',ptab:'profile',lview:'players',pid:null,sort:'rating',dir:'desc',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
+const ui={view:'home',aview:'day',aday:null,ptab:'profile',lview:'players',pid:null,sort:'rating',dir:'desc',scope:'season',tview:'overview',tid:null,tplan:false,month:null,devUsers:null,loginMsg:''};
 const COAL_COLORS={Vela:'#d23f36',Cetus:'#2e6fd6',Pyxis:'#8a4fd3'};
 const TEMPLATES=[
   {id:'quick',name:'Quick',desc:'Best of 3 every round',stages:{early:3,qf:3,sf:3,final:3}},
@@ -151,6 +151,45 @@ function openRow(m){
     <div class="right"><button class="btn btn-sm" data-act="nav" data-view="inbox">Open in inbox</button></div></div>`;
 }
 
+/* ---------- activity: who played whom, per day / 3 days / week ---------- */
+const startOfDay=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
+const addDays=(t,n)=>{const d=new Date(t);d.setDate(d.getDate()+n);return d.getTime()};
+function viewActivity(main,me){
+  const today=startOfDay(Date.now()),end=ui.aday||today,span={day:1,'3d':3,week:7}[ui.aview];
+  const from=addDays(end,1-span),to=addDays(end,1);
+  const list=S.matches.filter(m=>m.status==='confirmed'&&m.t>=from&&m.t<to).sort((a,b)=>b.t-a.t);
+  const days=[...Array(span)].map((_,i)=>addDays(end,-i)); // newest first
+  const byDay=new Map(days.map(d=>[d,[]]));list.forEach(m=>byDay.get(startOfDay(m.t))?.push(m));
+  const players=new Map();list.forEach(m=>[m.a,m.b].forEach(id=>players.set(id,(players.get(id)||0)+1)));
+  const top=[...players].sort((a,b)=>b[1]-a[1])[0];
+  const busiest=[...byDay].sort((a,b)=>b[1].length-a[1].length)[0];
+  const rangeLabel=span===1?(end===today?'Today':end===addDays(today,-1)?'Yesterday':fmtDate(end)):`${fmtDate(from)} – ${fmtDate(end)}`;
+  const max=Math.max(1,...[...byDay.values()].map(x=>x.length));
+  const bars=span>1?`<div class="act-bars" role="img" aria-label="Matches per day">${[...days].reverse().map(d=>{const n=byDay.get(d).length;
+    return `<button class="act-bar" data-act="aday" data-d="${d}" title="${fmtDate(d)}: ${n} match${n===1?'':'es'}"><span class="n num">${n}</span><span class="b"><i style="height:${(n/max*100).toFixed(0)}%"></i></span><span class="d">${new Date(d).toLocaleDateString('en-GB',{weekday:'short'})}</span></button>`}).join('')}</div>`:'';
+  const row=m=>{const A=P(m.a),B=P(m.b),[x,y]=tally(m.sets),t=m.tourn&&tById(m.tourn);
+    const name=(p,w)=>`<button class="link-btn act-p ${w?'w':''}" data-act="player" data-pid="${p.id}">${coalDot(p)}${esc(p.name)}</button>`;
+    return `<div class="act-row"><span class="act-time num">${fmtTime(m.t)}</span>
+      <div class="act-main"><span>${name(A,m.w===A.id)} <span class="act-score num">${x}–${y}</span> ${name(B,m.w===B.id)}</span>
+      <span class="sub"><span class="score">${fmtSets(m.sets)}</span> · best of ${m.bo}${t?` · <button class="link-btn" data-act="topen" data-tid="${t.id}">${esc(t.name)}</button>`:''}${m.matchup?` · <span class="chip ch">${S.matchupRules.multiplier}× challenger</span>`:''}${m.upset?' · <span class="chip warn">upset</span>':''}</span></div></div>`};
+  main.innerHTML=`<section class="panel">
+    <div class="head-row"><div><h2>Activity</h2><p class="lede">Every confirmed match, by the day it was played.</p></div>
+      <div class="seg" role="group" aria-label="Period"><button data-act="aview" data-v="day" aria-pressed="${ui.aview==='day'}">Day</button><button data-act="aview" data-v="3d" aria-pressed="${ui.aview==='3d'}">3 days</button><button data-act="aview" data-v="week" aria-pressed="${ui.aview==='week'}">Week</button></div></div>
+    <div class="cal-head"><button class="btn btn-sm" data-act="ashift" data-d="-1" aria-label="Earlier">←</button>
+      <h3>${rangeLabel}</h3>
+      <span class="actions"><button class="btn btn-sm" data-act="ashift" data-d="1" ${end>=today?'disabled':''} aria-label="Later">→</button>${end!==today?'<button class="btn btn-sm" data-act="atoday">Today</button>':''}</span></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Matches played</span><span class="v">${list.length}</span></div>
+      <div class="stat"><span class="k">Players</span><span class="v">${players.size}</span></div>
+      ${top?`<div class="stat"><span class="k">Most active</span><span class="v" style="font-size:1.05rem">${esc(P(top[0]).name)} <small>${top[1]}</small></span></div>`:''}
+      ${span>1&&busiest&&busiest[1].length?`<div class="stat"><span class="k">Busiest day</span><span class="v" style="font-size:1.05rem">${new Date(busiest[0]).toLocaleDateString('en-GB',{weekday:'long'})} <small>${busiest[1].length}</small></span></div>`:''}
+    </div>
+    ${bars}
+    ${list.length?days.filter(d=>byDay.get(d).length||span===1).map(d=>`<div class="act-day">${span>1?`<h3>${fmtDate(d)} <span class="sub">${byDay.get(d).length} match${byDay.get(d).length===1?'':'es'}</span></h3>`:''}<div class="list">${byDay.get(d).map(row).join('')}</div></div>`).join('')
+      :`<p class="empty">No confirmed matches ${span===1?'on this day':'in these days'}. <button class="link-btn" data-act="newmatch">Log one</button></p>`}
+  </section>`;
+}
+
 /* ---------- shell ---------- */
 function render(){
   const app=document.getElementById('app');
@@ -161,19 +200,19 @@ function render(){
     <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p>
       <div class="top-actions"><button class="new-match" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>New match</button>
       <div class="who"><b>${esc(me.login)}</b>${S.isAdmin?' <span class="chip" style="color:inherit;border-color:currentColor">admin</span>':''}<button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div></div>
-    <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
+    <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('activity','Activity')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
   </div></header>
   ${S.authMode==='dev'?'<div class="demo-note">Development mode: sign-in is simulated. Add 42 credentials to the server config to switch to real 42 sign-in.</div>':''}
   <main id="main"></main>`;
   const main=document.getElementById('main');
   if(ui.view==='home')viewProfile(main,me,true);
   else if(ui.view==='player')viewProfile(main,P(ui.pid),false);
-  else ({ladder:viewLadder,tourn:viewTourn,inbox:viewInbox})[ui.view](main,me);
+  else ({ladder:viewLadder,activity:viewActivity,tourn:viewTourn,inbox:viewInbox})[ui.view](main,me);
 }
 
 function viewLogin(){
   const msg=ui.loginMsg?`<p class="status err">${esc(ui.loginMsg)}</p>`:'';
-  const top=`<div class="login-top"><h1><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</h1><p>Ratings, matches and tournaments for the campus table.</p></div>`;
+  const top=`<div class="login-top"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder</p><h1>Who's next on the table?</h1><p>Ratings, matches, challengers and tournaments for everyone who plays at 42.</p></div>`;
   if(CFG.authMode==='42')return `<div class="login"><div class="login-card">${top}
     <div class="login-body">${msg}<a class="btn-42" href="/auth/42" style="text-decoration:none"><span class="mark">42</span>Sign in with 42 intra</a>
     <p class="note">We store your 42 login, name, coalition and the matches you play. Nothing else.</p></div></div></div>`;
@@ -193,7 +232,7 @@ function ratingChart(p){
   const ticks=[];for(let v=lo;v<=hi;v+=(hi-lo)>200?100:50)ticks.push(v);
   const pts=h.map((x,i)=>`${X(i).toFixed(1)},${Y(x.r).toFixed(1)}`);
   return `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating over the last ${h.length-1} games, now ${Math.round(p.r)}">
-    ${ticks.map(v=>`<line x1="${L}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${v}</text>`).join('')}
+    ${ticks.map(v=>`<line x1="${L}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="Instrument Sans, system-ui, sans-serif">${v}</text>`).join('')}
     <polygon points="${L},${H-B} ${pts.join(' ')} ${X(h.length-1)},${H-B}" opacity=".12"/>
     <polyline points="${pts.join(' ')}" fill="none" stroke-width="2" stroke-linejoin="round"/>
     <circle cx="${X(h.length-1)}" cy="${Y(p.r)}" r="5" fill="var(--ball)" stroke="var(--surface)" stroke-width="2"/>
@@ -645,6 +684,10 @@ document.addEventListener('click',e=>{
     case 'player':ui.pid=Number(el.dataset.pid);ui.ptab='profile';go(ui.pid===S.me?'home':'player');break;
     case 'ptab':ui.ptab=el.dataset.t;render();break;
     case 'lview':ui.lview=el.dataset.v;render();break;
+    case 'aview':ui.aview=el.dataset.v;render();break;
+    case 'ashift':{const span={day:1,'3d':3,week:7}[ui.aview],t=addDays(ui.aday||startOfDay(Date.now()),Number(el.dataset.d)*span);ui.aday=Math.min(t,startOfDay(Date.now()));render();break}
+    case 'atoday':ui.aday=null;render();break;
+    case 'aday':ui.aday=Number(el.dataset.d);ui.aview='day';render();break;
     case 'ssave':act(async()=>{const v=id=>document.getElementById(id).value.trim(),end=v('ss-end');
       await api('/api/seasons/current',{name:v('ss-name'),prize:v('ss-prize'),plannedEnd:end?new Date(end+'T23:59').getTime():null});await refresh();toast('Season saved.')});break;
     case 'send':if(el.dataset.sure){act(async()=>{const v=id=>document.getElementById(id).value.trim(),end=v('sn-end');

@@ -6,18 +6,18 @@ module.exports = function matchRoutes(app, { db, now, fail, auth, standings, inv
   const userExists = (id) => db.prepare('SELECT id FROM users WHERE id = ?').get(Number(id));
 
   app.post('/api/matches', { preHandler: auth }, async (req, reply) => {
-    const { opponentId, bestOf, sets } = req.body || {};
+    const { opponentId, bestOf } = req.body || {};
     const opp = userExists(opponentId);
     if (!opp) return fail(reply, 400, 'Choose an opponent.');
     if (opp.id === req.user.id) return fail(reply, 400, "You can't play yourself.");
-    const err = rules.checkMatch(sets, Number(bestOf));
-    if (err) return fail(reply, 400, err);
-    const [a, b] = rules.tally(sets);
+    const r = rules.checkResult({ sets: req.body?.sets, score: req.body?.score, bestOf });
+    if (r.error) return fail(reply, 400, r.error);
+    const sets = r.sets, [a, b] = r.score;
     const winner = a > b ? req.user.id : opp.id;
     const mu = matchups.openBetween(db, req.user.id, opp.id, now());
     const ts = now();
-    const id = Number(db.prepare(`INSERT INTO matches (reporter_id, opponent_id, best_of, sets, winner_id, status, created_at, issued_at, matchup_id)
-                                  VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`).run(req.user.id, opp.id, Number(bestOf), JSON.stringify(sets), winner, ts, ts, mu ? mu.id : null).lastInsertRowid);
+    const id = Number(db.prepare(`INSERT INTO matches (reporter_id, opponent_id, best_of, sets, score, winner_id, status, created_at, issued_at, matchup_id)
+                                  VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`).run(req.user.id, opp.id, Number(bestOf), JSON.stringify(sets), JSON.stringify([a, b]), winner, ts, ts, mu ? mu.id : null).lastInsertRowid);
     // Playing an accepted challenge closes it.
     db.prepare(`UPDATE challenges SET status = 'played', responded_at = ? WHERE status = 'accepted'
                 AND ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))`).run(now(), req.user.id, opp.id, opp.id, req.user.id);
@@ -51,14 +51,14 @@ module.exports = function matchRoutes(app, { db, now, fail, auth, standings, inv
     if (!m) return fail(reply, 404, 'Match not found.');
     if (m.reporter_id !== req.user.id) return fail(reply, 403, 'Only the player who logged this result can edit it.');
     if (!['pending', 'disputed'].includes(m.status)) return fail(reply, 409, `This result is already ${m.status}.`);
-    const { bestOf, sets } = req.body || {};
-    const err = rules.checkMatch(sets, Number(bestOf));
-    if (err) return fail(reply, 400, err);
-    const [a, b] = rules.tally(sets);
+    const { bestOf } = req.body || {};
+    const r = rules.checkResult({ sets: req.body?.sets, score: req.body?.score, bestOf });
+    if (r.error) return fail(reply, 400, r.error);
+    const sets = r.sets, [a, b] = r.score;
     // If the challenger matchup was taken over by another result in the meantime, this one no longer counts for it.
     const taken = m.matchup_id && db.prepare(`SELECT 1 FROM matches WHERE matchup_id = ? AND id != ? AND status IN ('pending','confirmed')`).get(m.matchup_id, m.id);
-    db.prepare(`UPDATE matches SET best_of = ?, sets = ?, winner_id = ?, status = 'pending', issued_at = ?, edited_at = ?, edits = edits + 1,
-                matchup_id = ? WHERE id = ?`).run(Number(bestOf), JSON.stringify(sets), a > b ? m.reporter_id : m.opponent_id, now(), now(), taken ? null : m.matchup_id, m.id);
+    db.prepare(`UPDATE matches SET best_of = ?, sets = ?, score = ?, winner_id = ?, status = 'pending', issued_at = ?, edited_at = ?, edits = edits + 1,
+                matchup_id = ? WHERE id = ?`).run(Number(bestOf), JSON.stringify(sets), JSON.stringify([a, b]), a > b ? m.reporter_id : m.opponent_id, now(), now(), taken ? null : m.matchup_id, m.id);
     return { ok: true };
   });
 

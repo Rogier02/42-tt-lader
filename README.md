@@ -103,6 +103,8 @@ Run the tests with `npm test`.
   - a loss earns 1
   - tournaments award the champion 10, the runner-up 6 and each semifinalist 3
   - points count only from `SEASON_START` on, while ratings carry over between seasons
+- **Logging a match:** Log match → tap your opponent → "I won" or "They won" → tap the score → Send. Your weekly challenger, accepted challenges and recent opponents are shown as big buttons, with search for everyone else. Set scores are optional; the rating only needs the winner and the format. The app remembers the format you used last.
+- **On phones:** a bottom bar with the menu on the left and Log match on the right. The app can be added to the home screen, where it opens full screen like an app. A link to `/#log` opens the log screen straight away, also after signing in, which suits a QR code on the table.
 - **Confirmation:** one player logs the result and the opponent confirms or disputes it. Results nobody responds to confirm themselves after `AUTO_CONFIRM_HOURS` (24 by default).
 - **Disputes:** disputing asks for confirmation first and takes an optional reason. A disputed result stays logged and shows as disputed for both players, but doesn't count. The reporter can edit it and send it again, or withdraw it, and the opponent can still confirm it after all. The reporter can also edit a result while it's waiting for confirmation. An edited result restarts the auto-confirm clock.
 - **Order:** ratings are replayed in the order matches were played (logged), not the order they were confirmed. Confirming results in a different order always gives the same outcome, and a late confirmation or an edited result slots into its original place.

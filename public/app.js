@@ -53,7 +53,8 @@ const outgoing=id=>S.matches.filter(m=>m.status==='pending'&&m.a===id);
 const opp=(m,id)=>m.a===id?m.b:m.a;
 const setsFor=(m,id)=>m.a===id?m.sets:m.sets.map(s=>[s[1],s[0]]);
 const tally=sets=>{let a=0,b=0;sets.forEach(s=>s[0]>s[1]?a++:b++);return[a,b]};
-const fmtSets=sets=>sets.map(s=>s[0]+'–'+s[1]).join(', ');
+const fmtSets=sets=>sets&&sets.length?sets.map(s=>s[0]+'–'+s[1]).join(', '):'sets not recorded';
+const scoreFor=(m,id)=>{const s=m.score||tally(m.sets);return m.a===id?s:[s[1],s[0]]};
 const fmtD=d=>(d>=0?'+':'−')+Math.abs(Math.round(d));
 const fmtDate=t=>new Date(t).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 const fmtTime=t=>new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
@@ -112,7 +113,7 @@ function challengerBoard(){
 
 /* ---------- disputes and edits ---------- */
 function openDispute(mid){
-  const m=S.matches.find(x=>x.id===Number(mid)),o=P(m.a),mine=setsFor(m,S.me),[a,b]=tally(mine);
+  const m=S.matches.find(x=>x.id===Number(mid)),o=P(m.a),mine=setsFor(m,S.me),[a,b]=scoreFor(m,S.me);
   const root=document.getElementById('modal-root');
   root.innerHTML=`<div class="overlay" data-act="mclose-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dh">
     <h3 id="dh">Dispute this result?</h3>
@@ -144,7 +145,7 @@ function openEditMatch(mid){
   draw();
 }
 function openRow(m){
-  const o=P(opp(m,S.me)),s=setsFor(m,S.me),[a,b]=tally(s),won=m.w===S.me;
+  const o=P(opp(m,S.me)),s=setsFor(m,S.me),[a,b]=scoreFor(m,S.me),won=m.w===S.me;
   const state=m.status==='disputed'?'<span class="chip warn">Disputed</span>':'<span class="chip">Awaiting confirmation</span>';
   return `<div class="mrow open"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button> ${state}${m.edits?' <span class="chip">edited</span>':''}</span>
     <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo} · played ${ago(m.created)}${m.status==='disputed'&&m.disputeReason?` · “${esc(m.disputeReason)}”`:''}</span></div>
@@ -167,7 +168,7 @@ function viewActivity(main,me){
   const max=Math.max(1,...[...byDay.values()].map(x=>x.length));
   const bars=span>1?`<div class="act-bars" role="img" aria-label="Matches per day">${[...days].reverse().map(d=>{const n=byDay.get(d).length;
     return `<button class="act-bar" data-act="aday" data-d="${d}" title="${fmtDate(d)}: ${n} match${n===1?'':'es'}"><span class="n num">${n}</span><span class="b"><i style="height:${(n/max*100).toFixed(0)}%"></i></span><span class="d">${new Date(d).toLocaleDateString('en-GB',{weekday:'short'})}</span></button>`}).join('')}</div>`:'';
-  const row=m=>{const A=P(m.a),B=P(m.b),[x,y]=tally(m.sets),t=m.tourn&&tById(m.tourn);
+  const row=m=>{const A=P(m.a),B=P(m.b),[x,y]=scoreFor(m,m.a),t=m.tourn&&tById(m.tourn);
     const name=(p,w)=>`<button class="link-btn act-p ${w?'w':''}" data-act="player" data-pid="${p.id}">${coalDot(p)}${esc(p.name)}</button>`;
     return `<div class="act-row"><span class="act-time num">${fmtTime(m.t)}</span>
       <div class="act-main"><span>${name(A,m.w===A.id)} <span class="act-score num">${x}–${y}</span> ${name(B,m.w===B.id)}</span>
@@ -192,6 +193,89 @@ function viewActivity(main,me){
 
 // The test copy wears a badge (and a tab title prefix) so it's never mistaken for the live one.
 const envBadge=()=>((S&&S.appEnv)||CFG.appEnv)==='test'?'<span class="env-badge" title="This is the test copy. Nothing here affects the live ladder.">Test</span>':'';
+/* ---------- quick log: opponent → who won → score → send ---------- */
+const store={get(k){try{return localStorage.getItem(k)}catch(_){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
+const ql={step:'who',opp:null,bo:5,winner:null,score:null,sets:false,q:'',edit:null};
+function recentOpponents(n=6){
+  const seen=new Set(),out=[];
+  for(const m of [...S.matches].filter(m=>m.a===S.me||m.b===S.me).sort((a,b)=>b.created-a.created)){
+    const o=opp(m,S.me);if(!seen.has(o)){seen.add(o);out.push(o)}if(out.length>=n)break}
+  return out.map(P).filter(Boolean);
+}
+function openQuickLog(opts={}){
+  const last=Number(store.get('ttl.bo'))||5;
+  Object.assign(ql,{step:opts.opp?'result':'who',opp:opts.opp?Number(opts.opp):null,bo:opts.bo||last,winner:null,score:null,sets:false,q:'',edit:null});
+  if(opts.edit){const m=opts.edit,sc=scoreFor(m,S.me);Object.assign(ql,{step:'result',opp:m.b,bo:m.bo,winner:sc[0]>sc[1]?'me':'them',score:sc,edit:m})}
+  renderQuickLog();
+}
+function renderQuickLog(){
+  const root=document.getElementById('modal-root'),me=P(S.me);
+  const sheet=body=>`<div class="overlay sheet-overlay" data-act="mclose-bg"><div class="modal sheet" role="dialog" aria-modal="true" aria-labelledby="qlh">${body}</div></div>`;
+  if(ql.step==='who'){
+    const chall=openMatchups().map(m=>({p:muOpp(m),tag:`${S.matchupRules.multiplier}× challenger`,lime:true}));
+    const acc=S.challenges.filter(c=>c.status==='accepted').map(c=>({p:P(c.from===S.me?c.to:c.from),tag:`challenge · best of ${c.bo}`,bo:c.bo}));
+    const shown=new Set([...chall,...acc].map(x=>x.p.id));
+    const recent=recentOpponents().filter(p=>!shown.has(p.id)).map(p=>({p,tag:'played recently'}));
+    const tile=x=>`<button class="ql-tile ${x.lime?'lime':''}" data-act="ql-pick" data-pid="${x.p.id}" ${x.bo?`data-bo="${x.bo}"`:''}><span class="ql-name">${coalDot(x.p)}${esc(x.p.name)}</span><span class="ql-tag">${x.tag} · ${Math.round(x.p.r)}</span></button>`;
+    const quick=[...chall,...acc,...recent];
+    root.innerHTML=sheet(`
+      <div class="ql-head"><h3 id="qlh">Who did you play?</h3><button class="link-btn" data-act="mclose">Close</button></div>
+      ${quick.length?`<div class="ql-tiles">${quick.map(tile).join('')}</div>`:''}
+      <div class="field" style="max-width:none"><label for="ql-q">${quick.length?'Someone else':'Find your opponent'}</label><input id="ql-q" type="search" placeholder="Name or login" autocomplete="off" value="${esc(ql.q)}"></div>
+      <div class="ql-list" id="ql-list"></div>
+      <button class="link-btn ql-alt" data-act="newmatch" data-mode="challenge">Challenge someone instead</button>`);
+    const input=root.querySelector('#ql-q'),list=root.querySelector('#ql-list');
+    const draw=()=>{const q=input.value.trim().toLowerCase();ql.q=input.value;
+      const ps=S.players.filter(p=>p.id!==S.me&&(!q||p.name.toLowerCase().includes(q)||p.login.toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
+      list.innerHTML=ps.slice(0,q?20:60).map(p=>`<button class="ql-row" data-act="ql-pick" data-pid="${p.id}"><span>${coalDot(p)}${esc(p.name)}</span><span class="sub">${esc(p.login)} · ${Math.round(p.r)}</span></button>`).join('')||'<p class="empty">Nobody with that name.</p>'};
+    input.addEventListener('input',draw);draw();
+    if(!quick.length)input.focus();
+    return;
+  }
+  const o=P(ql.opp),need=Math.ceil(ql.bo/2),isCh=isChallenger(o.id),lw=(S.lengthWeight||{})[ql.bo]||1;
+  const scores=ql.winner?[...Array(need)].map((_,l)=>ql.winner==='me'?[need,l]:[l,need]):[];
+  const same=(a,b)=>a&&b&&a[0]===b[0]&&a[1]===b[1];
+  const gain=lw*(glicko(me,o,1).r-me.r),loss=lw*(glicko(me,o,0).r-me.r);
+  root.innerHTML=sheet(`
+    <div class="ql-head">${ql.edit?'<span class="eyebrow">Edit your result</span>':'<button class="link-btn" data-act="ql-back" aria-label="Choose another opponent">← Back</button>'}<button class="link-btn" data-act="mclose">Close</button></div>
+    ${ql.edit&&ql.edit.status==='disputed'?`<div class="notice"><b>${esc(first(o))} disputed this.</b> ${ql.edit.disputeReason?'“'+esc(ql.edit.disputeReason)+'”':'No reason given.'}</div>`:''}
+    <div class="ql-vs"><h3 id="qlh">You vs ${esc(o.name)}</h3><span class="sub">${coalChip(o)} ${Math.round(o.r)} rating${isCh?` <span class="chip ch">${S.matchupRules.multiplier}× challenger</span>`:''}</span></div>
+    <div class="seg ql-bo" role="group" aria-label="Format">${[3,5,7].map(b=>`<button data-act="ql-bo" data-bo="${b}" aria-pressed="${ql.bo===b}">Best of ${b}</button>`).join('')}</div>
+    ${ql.bo===7?BO7_NOTE:''}
+    <div class="ql-win" role="group" aria-label="Who won?">
+      <button class="ql-big ${ql.winner==='me'?'on':''}" data-act="ql-win" data-w="me" aria-pressed="${ql.winner==='me'}">I won<span>${fmtD(gain)}</span></button>
+      <button class="ql-big ${ql.winner==='them'?'on':''}" data-act="ql-win" data-w="them" aria-pressed="${ql.winner==='them'}">${esc(first(o))} won<span>${fmtD(loss)}</span></button>
+    </div>
+    ${ql.winner?`<div class="ql-scores" role="group" aria-label="Score">${scores.map(s=>`<button class="ql-score ${same(s,ql.score)?'on':''}" data-act="ql-score" data-s="${s.join('-')}" aria-pressed="${same(s,ql.score)}">${s[0]}–${s[1]}</button>`).join('')}</div>`:'<p class="note">Rating change shown under each option.</p>'}
+    <details class="ql-sets" ${ql.sets?'open':''}><summary data-act="ql-sets">Add set scores (optional)</summary><div id="ql-setbox"></div></details>
+    <div id="ql-status" class="status" aria-live="polite"></div>
+    <button id="ql-send" class="btn btn-new ql-send" ${ql.score?'':'disabled'}>${ql.score?`Send ${ql.score[0]}–${ql.score[1]} to ${esc(first(o))}`:'Choose who won and the score'}</button>
+    <p class="note">${esc(first(o))} confirms with one tap, or it counts automatically after ${S.autoConfirmHours} hours.</p>
+    ${ql.edit?`<button class="link-btn ql-alt" data-act="withdraw" data-mid="${ql.edit.id}">Withdraw this result</button>`:''}`);
+  let setState=null;
+  const st=root.querySelector('#ql-status'),send=root.querySelector('#ql-send');
+  if(ql.sets){
+    setEditor(root.querySelector('#ql-setbox'),ql.bo,'qs','You',first(o),s=>{setState=s;
+      if(s.err){st.className='status err';st.textContent=s.err;send.disabled=true;return}
+      st.className='status';st.textContent='';
+      if(s.decided){ql.winner=s.wa>s.wb?'me':'them';ql.score=[s.wa,s.wb];
+        root.querySelectorAll('.ql-big').forEach(b=>{const on=b.dataset.w===ql.winner;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});
+        send.disabled=false;send.textContent=`Send ${s.wa}–${s.wb} to ${first(o)}`}
+      else if(s.sets.length){send.disabled=true;send.textContent='Finish the set scores, or clear them'}
+      else{send.disabled=!ql.score;send.textContent=ql.score?`Send ${ql.score[0]}–${ql.score[1]} to ${first(o)}`:'Choose who won and the score'}
+    });
+  }
+  send.addEventListener('click',()=>act(async()=>{
+    const body={opponentId:o.id,bestOf:ql.bo,score:ql.score};
+    if(setState&&setState.decided)body.sets=setState.sets;
+    send.disabled=true;
+    let r;try{r=ql.edit?await api(`/api/matches/${ql.edit.id}/edit`,body):await api('/api/matches',body)}finally{send.disabled=false}
+    store.set('ttl.bo',String(ql.bo));
+    closeModal();await refresh();
+    if(ql.edit){toast(`Sent again to ${o.name} for confirmation.`);return}
+    toast(r.challenger?`Challenger match sent to ${o.name}. ${S.matchupRules.multiplier}× points once confirmed.`:`Sent to ${o.name}. It counts once they confirm.`);
+  }));
+}
 /* ---------- shell ---------- */
 function render(){
   const app=document.getElementById('app');
@@ -201,12 +285,22 @@ function render(){
   const tab=(v,l,extra='')=>`<button class="tab" data-act="nav" data-view="${v}" ${ui.view===v||(v==='home'&&ui.view==='player'&&false)?'aria-current="page"':''}>${l}${extra}</button>`;
   app.innerHTML=`<header class="top"><div class="top-in">
     <div class="brand-row"><p class="brand"><span class="ball" aria-hidden="true"></span>42 Table Tennis Ladder${envBadge()}</p>
-      <div class="top-actions"><button class="new-match" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>New match</button>
+      <div class="top-actions"><button class="new-match" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>Log match</button>
       <div class="who"><b>${esc(me.login)}</b>${S.isAdmin?' <span class="chip" style="color:inherit;border-color:currentColor">admin</span>':''}<button class="link-btn" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button></div></div></div>
     <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('activity','Activity')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
   </div></header>
   ${S.authMode==='dev'?'<div class="demo-note">Development mode: sign-in is simulated. Add 42 credentials to the server config to switch to real 42 sign-in.</div>':''}
-  <main id="main"></main>`;
+  <main id="main"></main>
+  <nav class="mbar" aria-label="Quick actions">
+    <button class="mbar-menu" data-act="menu" aria-expanded="${!!ui.menu}" aria-controls="drawer"><span class="burger" aria-hidden="true"><i></i><i></i><i></i></span>Menu${inc?`<span class="badge">${inc}</span>`:''}</button>
+    <button class="mbar-log" data-act="newmatch"><span class="plus" aria-hidden="true">+</span>Log match</button>
+  </nav>
+  <div class="drawer-scrim" data-act="menu"></div>
+  <aside class="drawer" id="drawer" aria-label="Menu">
+    <div class="drawer-who"><span class="eyebrow">Signed in as</span><b>${esc(me.name)}</b><span class="sub">${esc(me.login)}${S.isAdmin?' · admin':''}</span></div>
+    <nav class="drawer-nav" aria-label="Sections">${tab('home','Home')}${tab('ladder','Ladder')}${tab('activity','Activity')}${tab('tourn','Tournaments')}${tab('inbox','Inbox',inc?`<span class="badge">${inc}</span>`:'')}</nav>
+    <button class="btn btn-sm drawer-out" data-act="signout">${S.authMode==='dev'?'Switch user':'Sign out'}</button>
+  </aside>`;
   const main=document.getElementById('main');
   if(ui.view==='home')viewProfile(main,me,true);
   else if(ui.view==='player')viewProfile(main,P(ui.pid),false);
@@ -243,7 +337,7 @@ function ratingChart(p){
   </svg></div>`;
 }
 function matchRow(m,pid){
-  const o=P(opp(m,pid)),won=m.w===pid,s=setsFor(m,pid),[a,b]=tally(s),t=m.tourn&&tById(m.tourn),d=m.delta?m.delta[pid]:0,pts=m.pts?m.pts[pid]:0;
+  const o=P(opp(m,pid)),won=m.w===pid,s=setsFor(m,pid),[a,b]=scoreFor(m,pid),t=m.tourn&&tById(m.tourn),d=m.delta?m.delta[pid]:0,pts=m.pts?m.pts[pid]:0;
   return `<div class="mrow"><div class="main"><span><span class="chip ${won?'win':'loss'}" style="margin-left:0">${won?'W':'L'} ${a}–${b}</span> vs <button class="link-btn" style="opacity:1" data-act="player" data-pid="${o.id}">${esc(o.name)}</button>${m.upset&&won?' <span class="chip warn">upset</span>':''}${m.matchup?` <span class="chip ch">${S.matchupRules?S.matchupRules.multiplier:3}× challenger</span>`:''}</span>
     <span class="sub"><span class="score">${fmtSets(s)}</span> · best of ${m.bo}${t?` · <button class="link-btn" data-act="topen" data-tid="${t.id}">${esc(t.name)}</button>`:''} · ${ago(m.t)}</span></div>
     <div class="right"><span class="score ${d>=0?'up':'down'}">${fmtD(d)}</span>${m.before?`<span class="pts num" title="Rating before and after this match">${Math.round(m.before[pid])} → ${Math.round(m.before[pid]+d)}</span>`:''}${inSeason(m)&&m.coalPts&&m.w===pid?`<span class="pts"><span class="coal-dot" style="--c:${esc(colorOf(m.coalition))}"></span>+${m.coalPts} ${esc(m.coalition)}</span>`:''}</div></div>`;
@@ -274,6 +368,9 @@ function profileTab(p,isMe,me,sm,rk){
     if(n)items.push(`<button class="btn btn-sm" data-act="nav" data-view="inbox">${n} thing${n>1?'s':''} waiting in your inbox</button>`);
     if(next)items.push(`<button class="btn btn-sm" data-act="topen" data-tid="${next.id}">${next.status==='live'?'Playing now':'Next up'}: ${esc(next.name)}${next.status==='live'?'':', '+fmtDate(next.startsAt)}</button>`);
     nudges=items.length?`<div class="nudges">${items.join('')}</div>`:'';
+    const installed=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+    if(!installed&&matchMedia('(max-width:700px)').matches&&store.get('ttl.tip')!=='done')
+      nudges+=`<div class="tip"><span><b>Log a match in seconds:</b> add this page to your home screen. In your browser's share or ⋮ menu, choose <i>Add to Home Screen</i>.</span><button class="link-btn" data-act="tipdone">Got it</button></div>`;
   }
   return `<div class="stats">
       <div class="stat"><span class="k">Rank</span><span class="v">${rk?'#'+rk:'–'} <small>of ${ranked().length}</small></span></div>
@@ -487,7 +584,7 @@ function viewInbox(main,me){
   const ch=S.challenges,quote=c=>c.message?'“'+esc(c.message)+'” · ':'';
   main.innerHTML=[
     section('Needs your confirmation',"Check the score. Confirming updates both ratings. If it's wrong, dispute it and log it again together.",
-      inc.map(m=>{const o=P(m.a),mine=setsFor(m,me.id),[a,b]=tally(mine),won=m.w===me.id;
+      inc.map(m=>{const o=P(m.a),mine=setsFor(m,me.id),[a,b]=scoreFor(m,me.id),won=m.w===me.id;
         return line(`<span><b>${esc(o.name)}</b> logged a ${won?'win for you':'loss for you'} <span class="chip ${won?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(mine)}</span> · best of ${m.bo} · ${ago(m.created)} · ${left(m)}</span>`,
         `<button class="btn btn-good btn-sm" data-act="confirm" data-mid="${m.id}">Confirm</button><button class="btn btn-sm" data-act="dispute" data-mid="${m.id}">Dispute</button>`)}),'Nothing to confirm.'),
     section('A challenger approaches',`Play these this week for ${S.matchupRules?S.matchupRules.multiplier:3}× season and coalition points.`,
@@ -505,10 +602,10 @@ function viewInbox(main,me){
         `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${c.to}" data-then="inbox">Sign in as ${esc(P(c.to).login)}</button>`:''}<button class="btn btn-sm" data-act="ccancel" data-cid="${c.id}">Withdraw</button>`))]),
     section('Tournament invites','',myInvites().map(t=>line(`<span><b>${esc(t.name)}</b></span><span class="sub">${fmtDate(t.startsAt)} ${fmtTime(t.startsAt)} · invited by ${esc(P(t.createdBy).name)}</span>`,
       `<button class="btn btn-good btn-sm" data-act="tjoin" data-tid="${t.id}">Join</button><button class="btn btn-sm" data-act="tleave" data-tid="${t.id}">Decline</button><button class="btn btn-sm" data-act="topen" data-tid="${t.id}">View</button>`))),
-    section('Waiting on your opponent','',out.map(m=>{const o=P(m.b),[a,b]=tally(m.sets);
+    section('Waiting on your opponent','',out.map(m=>{const o=P(m.b),[a,b]=scoreFor(m,m.a);
       return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span></span><span class="sub"><span class="score">${fmtSets(m.sets)}</span> · sent ${ago(m.created)} · ${left(m)}</span>`,
       `${S.authMode==='dev'?`<button class="btn btn-sm" data-act="devlogin" data-pid="${o.id}" data-then="inbox">Sign in as ${esc(o.login)}</button>`:''}<button class="btn btn-sm" data-act="editmatch" data-mid="${m.id}">Edit</button><button class="btn btn-sm" data-act="withdraw" data-mid="${m.id}">Withdraw</button>`)})),
-    section('Disputed','Disputed results stay here until they are fixed, confirmed or withdrawn. They don\'t count for anything in the meantime.',disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id),[a,b]=tally(mine),reporter=m.a===me.id;
+    section('Disputed','Disputed results stay here until they are fixed, confirmed or withdrawn. They don\'t count for anything in the meantime.',disp.map(m=>{const o=P(opp(m,me.id)),mine=setsFor(m,me.id),[a,b]=scoreFor(m,me.id),reporter=m.a===me.id;
       const why=m.disputeReason?`“${esc(m.disputeReason)}”`:'No reason given';
       return line(`<span>vs <b>${esc(o.name)}</b> <span class="chip ${m.w===me.id?'win':'loss'}">${a}–${b}</span> <span class="chip warn">Disputed</span></span>
         <span class="sub"><span class="score">${fmtSets(mine)}</span> · played ${ago(m.created)} · ${reporter?esc(first(o))+' says: '+why:'you said: '+why}</span>`,
@@ -671,6 +768,9 @@ function openReport(tid,r,k){
   root.querySelector('#tm-a0').focus();
 }
 
+function openPendingLog(){let want=false;try{want=sessionStorage.getItem('ttl.log')==='1'}catch(_){}
+  if(want&&S){try{sessionStorage.removeItem('ttl.log')}catch(_){}openQuickLog()}}
+window.addEventListener('hashchange',()=>{if(location.hash==='#log'&&S){history.replaceState(null,'',location.pathname);openQuickLog()}});
 async function loadDevUsers(){if(CFG.authMode!=='dev')return;try{ui.devUsers=await api('/api/dev-users')}catch(e){ui.loginMsg=e.message}render()}
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
 
@@ -679,9 +779,9 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]');if(!el)return;
   const a=el.dataset.act,tid=Number(el.dataset.tid);
   if(a==='mclose-bg'&&e.target!==el)return;
-  const go=view=>{ui.view=view;closeModal();render();window.scrollTo(0,0)};
+  const go=view=>{ui.view=view;ui.menu=false;document.body.classList.remove('menu-open');closeModal();render();window.scrollTo(0,0)};
   switch(a){
-    case 'devlogin':act(async()=>{await api('/auth/dev-login',{userId:Number(el.dataset.pid)});ui.view=el.dataset.then||'home';ui.pid=null;await refresh();if(el.dataset.then)toast(`Signed in as ${P(S.me).login}.`)});break;
+    case 'devlogin':act(async()=>{await api('/auth/dev-login',{userId:Number(el.dataset.pid)});ui.view=el.dataset.then||'home';ui.pid=null;await refresh();openPendingLog();if(el.dataset.then)toast(`Signed in as ${P(S.me).login}.`)});break;
     case 'signout':act(async()=>{await api('/auth/logout',{});S=null;render();loadDevUsers()});break;
     case 'nav':if(el.dataset.view==='tourn'){ui.tid=null;ui.tplan=false}go(el.dataset.view);break;
     case 'player':ui.pid=Number(el.dataset.pid);ui.ptab='profile';go(ui.pid===S.me?'home':'player');break;
@@ -698,15 +798,27 @@ document.addEventListener('click',e=>{
         await refresh();toast(r.winner?`Season over. ${r.winner} wins!`:'Season over. No coalition scored.')})}
       else{if(!document.getElementById('sn-name').value.trim()){toast('Name the next season first.');break}
         el.dataset.sure='1';const t=el.textContent;el.textContent='Click again to end the season';setTimeout(()=>{if(el.isConnected){delete el.dataset.sure;el.textContent=t}},4000)}break;
-    case 'newmatch':openNewMatch({opp:el.dataset.pid||'',mode:el.dataset.mode||'log',bo:el.dataset.bo?Number(el.dataset.bo):undefined});break;
-    case 'nm-mode':nm.mode=el.dataset.mode;nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
+    case 'newmatch':ui.menu=false;document.body.classList.remove('menu-open');
+      if(el.dataset.mode==='challenge')openNewMatch({opp:el.dataset.pid||'',mode:'challenge',bo:el.dataset.bo?Number(el.dataset.bo):undefined});
+      else openQuickLog({opp:el.dataset.pid||null,bo:el.dataset.bo?Number(el.dataset.bo):undefined});break;
+    case 'nm-mode':if(el.dataset.mode==='log'){openQuickLog({opp:document.getElementById('nm-opp').value||null});break}
+      nm.mode=el.dataset.mode;nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
+    case 'ql-pick':ql.opp=Number(el.dataset.pid);ql.step='result';ql.winner=null;ql.score=null;ql.sets=false;if(el.dataset.bo)ql.bo=Number(el.dataset.bo);renderQuickLog();break;
+    case 'ql-back':ql.step='who';renderQuickLog();break;
+    case 'ql-bo':ql.bo=Number(el.dataset.bo);ql.score=null;renderQuickLog();break;
+    case 'ql-win':if(ql.winner!==el.dataset.w){ql.winner=el.dataset.w;ql.score=null}
+      renderQuickLog();break;
+    case 'ql-score':ql.score=el.dataset.s.split('-').map(Number);renderQuickLog();break;
+    case 'ql-sets':e.preventDefault();ql.sets=!ql.sets;renderQuickLog();break;
+    case 'tipdone':store.set('ttl.tip','done');render();break;
+    case 'menu':ui.menu=!ui.menu;document.body.classList.toggle('menu-open',ui.menu);break;
     case 'nm-bo':nm.bo=Number(el.dataset.bo);nm.opp=document.getElementById('nm-opp').value;renderNewMatch();break;
     case 'lsort':{const k=el.dataset.k;if(ui.sort===k)ui.dir=ui.dir==='asc'?'desc':'asc';else{ui.sort=k;ui.dir=k==='name'?'asc':'desc'}render();break}
     case 'scope':ui.scope=el.dataset.scope;render();break;
     case 'confirm':act(async()=>{const r=await api(`/api/matches/${el.dataset.mid}/confirm`,{});await refresh();toast(`Confirmed. Your rating ${fmtD(r.delta||0)}, +${r.pts||0} season points.`)});break;
     case 'dispute':openDispute(el.dataset.mid);break;
     case 'dispute-yes':act(async()=>{await api(`/api/matches/${el.dataset.mid}/dispute`,{reason:document.getElementById('d-reason').value});closeModal();await refresh();toast('Disputed. Nothing counts until it is fixed or confirmed.')});break;
-    case 'editmatch':openEditMatch(el.dataset.mid);break;
+    case 'editmatch':openQuickLog({edit:S.matches.find(x=>x.id===Number(el.dataset.mid))});break;
     case 'withdraw':act(async()=>{await api(`/api/matches/${el.dataset.mid}/withdraw`,{});closeModal();await refresh();toast('Result withdrawn.')});break;
     case 'caccept':act(async()=>{await api(`/api/challenges/${el.dataset.cid}/accept`,{});await refresh();toast('Challenge accepted. Log the result after you play.')});break;
     case 'cdecline':act(async()=>{await api(`/api/challenges/${el.dataset.cid}/decline`,{});await refresh();toast('Challenge declined.')});break;
@@ -746,7 +858,7 @@ document.addEventListener('change',e=>{
   if(el.dataset.actChange==='muopt')act(async()=>{await api('/api/me/matchups',{enabled:el.checked});await refresh();toast(el.checked?"You'll get a challenger every Monday.":'No more weekly challengers. Your open ones still count.')});
   if(el.dataset.actChange==='tround')act(async()=>{await api(`/api/tournaments/${el.dataset.tid}/format`,{round:Number(el.dataset.r),bestOf:Number(el.value)});await refresh();toast('Round format updated.')});
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();if(ui.menu){ui.menu=false;document.body.classList.remove('menu-open')}}});
 
 (async()=>{
   const q=new URLSearchParams(location.search).get('login');
@@ -754,7 +866,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   if(q==='campus')ui.loginMsg='This ladder is only open to students of this campus.';
   if(q)history.replaceState(null,'',location.pathname);
   try{CFG=await api('/api/config')}catch(_){}
+  // A link (or QR code at the table) to /#log opens the log screen straight away, also after signing in.
+  if(location.hash==='#log'){try{sessionStorage.setItem('ttl.log','1')}catch(_){}history.replaceState(null,'',location.pathname)}
   await refresh();
+  openPendingLog();
   if(!S)loadDevUsers();
   // Pick up other people's changes every minute, unless you're in the middle of something.
   setInterval(()=>{if(S&&!document.querySelector('.overlay')&&!ui.tplan&&document.visibilityState==='visible'&&!document.activeElement.matches('input,select,textarea'))refresh()},60e3);

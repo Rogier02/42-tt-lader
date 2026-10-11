@@ -163,6 +163,15 @@ function migrate(db) {
       COMMIT;
     `);
   }
+  if (version < 6) {
+    db.exec(`
+      BEGIN;
+      -- Match score from the reporter's side, e.g. [3,1]. Set scores (sets) are optional from now on.
+      ALTER TABLE matches ADD COLUMN score TEXT;
+      PRAGMA user_version = 6;
+      COMMIT;
+    `);
+  }
 }
 
 module.exports = { open };

@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>42 Table Tennis Ladder</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%23e8742c%22/%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a2952">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TT Ladder">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800;9..144,900&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -67,13 +74,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   .top-in{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"brand actions" "tabs tabs";border-radius:26px;padding:10px 10px 8px 18px;row-gap:6px}
   .tabs{justify-content:flex-start;margin-left:-8px}
 }
-@media (max-width:600px){
-  .top{padding-inline:10px}
-  .brand{font-size:0;gap:0}            /* only the ball on phones; the page title is in the tab */
-  .who b{display:none}
-  .top-actions{gap:8px;justify-content:flex-end;min-width:0}
-  .new-match{padding:9px 14px}
-}
+
 
 .link-btn{background:none;border:0;padding:4px 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;cursor:pointer;color:inherit;opacity:.85}
 .link-btn:hover{opacity:1}
@@ -120,7 +121,7 @@ h3{font-family:var(--f-display);font-weight:700;font-size:1.3rem;letter-spacing:
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 
 .field{display:flex;flex-direction:column;gap:6px;max-width:360px}
-select,input[type=text],input[type=date],textarea,input[type=datetime-local],input[type=number].plain{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;color:var(--ink)}
+select,input[type=text],input[type=search],input[type=date],textarea,input[type=datetime-local],input[type=number].plain{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;color:var(--ink)}
 textarea{min-height:80px;resize:vertical}
 .check{display:flex;gap:8px;align-items:center;font-size:.95rem;color:var(--ink);font-weight:400}
 
@@ -379,11 +380,90 @@ details.season>summary:hover .season-name b{text-decoration:underline;text-under
 /* ---------- test copy badge ---------- */
 .env-badge{font-family:var(--f-body);font-size:.72rem;font-weight:700;letter-spacing:.02em;background:var(--ball);color:#2a1205;border-radius:999px;padding:2px 9px;margin-left:10px}
 
+/* ---------- quick log sheet ---------- */
+.sheet{max-width:520px;gap:16px}
+.ql-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ql-head h3{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.ql-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ql-tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:14px 14px 12px;border-radius:16px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;min-width:0}
+.ql-tile:hover{border-color:var(--ink)}
+.ql-tile.lime{border:2px solid var(--lime);background:color-mix(in srgb,var(--lime) 18%,var(--bg))}
+.ql-name{font-weight:600;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ql-tag{font-size:.78rem;color:var(--muted)}
+.ql-list{display:flex;flex-direction:column;max-height:42dvh;overflow-y:auto;margin-top:-6px}
+.ql-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 4px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;cursor:pointer;font-size:1rem}
+.ql-row:hover{background:var(--sunk)}
+.ql-row .sub{font-size:.82rem;color:var(--muted);white-space:nowrap}
+.ql-alt{align-self:center;font-size:.9rem}
+.ql-vs{display:flex;flex-direction:column;gap:6px}
+.ql-vs h3{font-size:1.7rem;font-weight:800;letter-spacing:-.02em}
+.ql-vs .sub{display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--muted);font-size:.9rem}
+.ql-bo{align-self:flex-start}
+.ql-win{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ql-big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:78px;border-radius:18px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);background:var(--bg);color:var(--ink);font-family:var(--f-display);font-weight:800;font-size:1.35rem;letter-spacing:-.015em;cursor:pointer;padding:10px}
+.ql-big span{font-family:var(--f-body);font-weight:600;font-size:.8rem;color:var(--muted);letter-spacing:0}
+.ql-big.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ql-big.on span{color:color-mix(in srgb,var(--bg) 75%,transparent)}
+.ql-scores{display:flex;gap:10px;flex-wrap:wrap}
+.ql-score{flex:1 1 0;min-width:76px;min-height:60px;border-radius:16px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);background:var(--bg);color:var(--ink);font-family:var(--f-display);font-weight:800;font-size:1.5rem;cursor:pointer;font-variant-numeric:tabular-nums lining-nums}
+.ql-score.on{background:var(--lime);border-color:var(--lime);color:var(--on-lime)}
+.ql-sets>summary{font-weight:600;font-size:.92rem;color:var(--muted)}
+.ql-sets[open]>summary{margin-bottom:10px}
+.ql-send{width:100%;min-height:56px;font-size:1.05rem;justify-content:center}
+
+/* ---------- home-screen tip ---------- */
+.tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--sunk);border-radius:var(--r-item);padding:12px 16px;font-size:.9rem}
+.tip span{min-width:0;flex:1 1 220px}
+
+/* ---------- phone layout: menu bottom-left, Log match bottom-right ---------- */
+.mbar,.drawer,.drawer-scrim{display:none}
+@media (max-width:700px){
+  .top{padding-block:10px 4px}
+  .top .tabs,.top .top-actions{display:none}
+  .top-in{grid-template-columns:1fr;grid-template-areas:"brand";border-radius:999px;padding:12px 18px}
+  .top .brand{font-size:1.05rem;gap:9px}
+  main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+  .mbar{display:grid;grid-template-columns:auto 1fr;gap:10px;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:15;
+    background:var(--band);border:1px solid var(--band-line);border-radius:999px;padding:7px;box-shadow:0 10px 30px rgba(6,22,46,.28)}
+  .mbar-menu{display:inline-flex;align-items:center;gap:9px;background:transparent;color:var(--on-band);border:0;border-radius:999px;padding:0 16px 0 14px;min-height:52px;font-weight:600;font-size:.98rem;cursor:pointer}
+  .mbar-menu .badge{margin-left:2px}
+  .burger{display:inline-flex;flex-direction:column;gap:4px;width:18px}
+  .burger i{display:block;height:2px;border-radius:2px;background:currentColor}
+  .mbar-log{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--lime);color:var(--on-lime);border:0;border-radius:999px;min-height:52px;font-weight:700;font-size:1.08rem;cursor:pointer}
+  .mbar-log .plus{font-size:1.4rem;line-height:1;font-weight:500}
+  .drawer-scrim{display:block;position:fixed;inset:0;z-index:25;background:rgba(6,22,46,.5);opacity:0;pointer-events:none}
+  .drawer{display:flex;flex-direction:column;gap:18px;position:fixed;top:0;bottom:0;left:0;width:min(84vw,330px);z-index:26;transform:translateX(-102%);
+    background:var(--band);color:var(--on-band);padding:calc(24px + env(safe-area-inset-top,0px)) 18px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;
+    --ink:var(--on-band);--muted:rgba(237,230,196,.72);--line:var(--band-line);border-radius:0 26px 26px 0}
+  body.menu-open .drawer{transform:none}
+  body.menu-open .drawer-scrim{opacity:1;pointer-events:auto}
+  body.menu-open{overflow:hidden}
+  .drawer-who{display:flex;flex-direction:column;gap:2px;padding:0 8px}
+  .drawer-who b{font-family:var(--f-display);font-weight:800;font-size:1.6rem;letter-spacing:-.02em;line-height:1.1}
+  .drawer-who .sub{color:var(--muted);font-size:.9rem}
+  .drawer-nav{display:flex;flex-direction:column;gap:2px}
+  .drawer-nav .tab{justify-content:flex-start;font-size:1.2rem;font-weight:600;padding:14px 16px;opacity:.85;width:100%;color:var(--on-band)}
+  .drawer-nav .tab[aria-current="page"]{opacity:1;background:rgba(237,230,196,.14)}
+  .drawer-out{align-self:flex-start;margin:auto 8px 0;color:var(--on-band);border-color:var(--band-line)}
+  .sheet{max-width:none;border-radius:26px 26px 0 0;max-height:94dvh;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:700px) and (prefers-reduced-motion:no-preference){
+  .drawer{transition:transform .22s ease}
+  .drawer-scrim{transition:opacity .22s ease}
+  .sheet{animation:sheetup .2s ease-out}
+  @keyframes sheetup{from{transform:translateY(24px);opacity:.6}}
+}
+
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;background:rgba(6,22,46,.6);display:grid;place-items:center;padding:16px;z-index:20}
 .modal{background:var(--surface);border-radius:var(--r-panel);padding:24px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--band);color:var(--on-band);padding:12px 20px;border-radius:999px;font-size:.95rem;z-index:30;max-width:calc(100% - 32px);box-shadow:0 10px 30px rgba(6,22,46,.25)}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{transform:translate(-50%,8px);opacity:0}}}
+/* phone overrides that must come after the general overlay rules */
+@media (max-width:700px){
+  .overlay.sheet-overlay{align-items:end;padding:0}
+  .toast{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+}
 </style>
 </head>
 <body>

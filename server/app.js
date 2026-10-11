@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const Fastify = require('fastify');
 const { compute, COALITION_POINTS, LENGTH_WEIGHT } = require('./standings');
 const matchups = require('./matchups');
+const rules = require('./rules');
 const { assignMissing } = require('./coalitions');
 const { ensureSeason, currentSeason, seasonRoutes } = require('./routes/seasons');
 
@@ -158,7 +159,8 @@ function buildApp(config, db) {
                              OR (status IN ('pending','disputed') AND (reporter_id = ? OR opponent_id = ?))`).all(me.id, me.id);
     const matches = rows.map((m) => {
       const x = st.meta.get(m.id) || {};
-      return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets: JSON.parse(m.sets), w: m.winner_id, status: m.status,
+      const sets = JSON.parse(m.sets);
+      return { id: m.id, a: m.reporter_id, b: m.opponent_id, bo: m.best_of, sets, score: m.score ? JSON.parse(m.score) : rules.tally(sets), w: m.winner_id, status: m.status,
         t: m.created_at, created: m.created_at, issued: m.issued_at || m.created_at,
         disputeReason: m.dispute_reason || '', disputedAt: m.disputed_at, edits: m.edits || 0, tourn: m.tournament_id, before: x.before, delta: x.delta, pts: x.pts, upset: !!x.upset, coalPts: x.coalPts || 0, coalition: x.coalition || null, matchup: m.matchup_id || null };
     });

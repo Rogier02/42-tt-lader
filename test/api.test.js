@@ -279,3 +279,20 @@ test('disputes: result stays logged, reporter edits and re-sends, opponent can c
   assert.equal((await call(bob, 'POST', `/api/matches/${m.body.id}/confirm`, {})).code, 200);
   assert.equal((await call(alice, 'GET', '/api/state')).body.players.find((p) => p.id === 1).w, 1);
 });
+
+test('quick results: a score without set scores is enough', async () => {
+  const { login, call } = await setup();
+  const alice = await login(1), bob = await login(2);
+  const bad = [[{ bestOf: 5, score: [3, 3] }], [{ bestOf: 5, score: [2, 1] }], [{ bestOf: 3, score: [3, 0] }], [{ bestOf: 5 }], [{ bestOf: 5, score: [3, 1], sets: [[11, 5], [11, 5], [11, 5]] }]];
+  for (const [body] of bad) assert.equal((await call(alice, 'POST', '/api/matches', { opponentId: 2, ...body })).code, 400, JSON.stringify(body));
+  const m = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 5, score: [1, 3] });
+  assert.equal(m.code, 200);
+  await call(bob, 'POST', `/api/matches/${m.body.id}/confirm`, {});
+  const st = (await call(alice, 'GET', '/api/state')).body;
+  const x = st.matches.find((y) => y.id === m.body.id);
+  assert.deepEqual(x.score, [1, 3]); assert.deepEqual(x.sets, []); assert.equal(x.w, 2, 'bob won');
+  assert.equal(st.players.find((p) => p.id === 2).w, 1);
+  // Set scores still work and decide the score.
+  const s = await call(alice, 'POST', '/api/matches', { opponentId: 2, bestOf: 3, sets: [[11, 5], [9, 11], [11, 7]] });
+  assert.deepEqual((await call(alice, 'GET', '/api/state')).body.matches.find((y) => y.id === s.body.id).score, [2, 1]);
+});

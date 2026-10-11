@@ -61,6 +61,24 @@ function checkMatch(sets, bestOf) {
   return null;
 }
 
+// A result is a match score from the reporter's side, e.g. [3, 1], with set scores optional.
+// Returns { error } or { score, sets }.
+function checkResult({ sets, score, bestOf }) {
+  bestOf = Number(bestOf);
+  if (Array.isArray(sets) && sets.length) {
+    const err = checkMatch(sets, bestOf);
+    if (err) return { error: err };
+    const fromSets = tally(sets);
+    if (Array.isArray(score) && (score[0] !== fromSets[0] || score[1] !== fromSets[1])) return { error: `The set scores add up to ${fromSets[0]}–${fromSets[1]}, not ${score[0]}–${score[1]}.` };
+    return { score: fromSets, sets };
+  }
+  if (![3, 5, 7].includes(bestOf)) return { error: 'Best of 3, 5 or 7 only.' };
+  if (!Array.isArray(score) || score.length !== 2 || !score.every((n) => Number.isInteger(n) && n >= 0)) return { error: 'Choose the score.' };
+  const need = Math.ceil(bestOf / 2), [a, b] = score;
+  if (!((a === need && b < need) || (b === need && a < need))) return { error: `In a best of ${bestOf}, the winner takes ${need} sets.` };
+  return { score: [a, b], sets: [] };
+}
+
 const tally = (sets) => sets.reduce(([a, b], s) => (s[0] > s[1] ? [a + 1, b] : [a, b + 1]), [0, 0]);
 
 // Standard bracket order so seeds 1 and 2 can only meet in the final.
@@ -105,4 +123,4 @@ function cleanStages(s) {
   return out;
 }
 
-module.exports = { START, glicko, expected, validSet, checkMatch, tally, buildBracket, advance, isFinished, SCALE, BEST_OF, STAGES, stageOf, roundBestOf, cleanStages };
+module.exports = { START, glicko, expected, validSet, checkMatch, checkResult, tally, buildBracket, advance, isFinished, SCALE, BEST_OF, STAGES, stageOf, roundBestOf, cleanStages };
